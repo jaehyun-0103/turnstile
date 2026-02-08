@@ -3,34 +3,49 @@ services:
     image: mysql:8.0
     container_name: turnstile-mysql
     restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: turnstile
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      TZ: Asia/Seoul
+    env_file:
+      - .env
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --max-connections=1000
+      - --innodb_flush_log_at_trx_commit=2  # 개발용 성능 향상
+      - --sync_binlog=0                     # 개발용 성능 향상
     networks:
       - turnstile-net
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:alpine
     container_name: turnstile-redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--maxmemory", "512mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--save", "60", "1",       # 1분에 1회 이상 변경 시 AOF 동기화
+      "--tcp-keepalive", "60"    # 연결 유지 안정성
+    ]
     networks:
       - turnstile-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   mysql_data:
