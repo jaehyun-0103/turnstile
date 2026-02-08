@@ -24,7 +24,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:alpine
+    image: redis:7.4-alpine
     container_name: turnstile-redis
     restart: always
     ports:
@@ -36,8 +36,8 @@ services:
       "--appendonly", "yes",
       "--maxmemory", "512mb",
       "--maxmemory-policy", "allkeys-lru",
-      "--save", "60", "1",       # 1분에 1회 이상 변경 시 AOF 동기화
-      "--tcp-keepalive", "60"    # 연결 유지 안정성
+      "--save", "60", "1",
+      "--tcp-keepalive", "60"
     ]
     networks:
       - turnstile-net
