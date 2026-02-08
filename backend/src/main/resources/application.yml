@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: turnstile-api
+
+  # 1. MySQL 설정 (Docker: 3307 포트)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3307/turnstile?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: user
+    password: 1234
+
+  # 2. JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+  # 3. Redis 설정 (Docker: 6380 포트)
+  data:
+    redis:
+      host: localhost
+      port: 6380
