@@ -1,0 +1,46 @@
+package com.turnstile.backend.domain.concert;
+
+import com.turnstile.backend.global.common.BaseTimeEntity;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "seat", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"schedule_id", "seat_no"})
+})
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Seat extends BaseTimeEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "schedule_id", nullable = false)
+    private ConcertSchedule schedule;
+
+    @Column(name = "seat_no", nullable = false)
+    private Integer seatNo;
+
+    @Column(nullable = false, precision = 19, scale = 0)
+    private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private SeatStatus status;
+
+    @Version // 낙관적 락을 위한 버전 관리
+    private Long version;
+
+    @Column(name = "hold_user_id")
+    private Long holdUserId;
+
+    @Column(name = "hold_expires_at")
+    private LocalDateTime holdExpiresAt;
+}
