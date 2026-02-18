@@ -1,4 +1,4 @@
-package com.turnstile.backend.global.config;
+package com.turnstile.backend.global.common;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
