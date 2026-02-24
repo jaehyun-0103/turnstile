@@ -6,7 +6,7 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3307/turnstile?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: user
+    username: root
     password: 1234
 
   # 2. JPA 설정
