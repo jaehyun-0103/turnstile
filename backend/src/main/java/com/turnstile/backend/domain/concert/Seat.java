@@ -35,9 +35,6 @@ public class Seat extends BaseTimeEntity {
     @Column(length = 20)
     private SeatStatus status;
 
-    @Version // 낙관적 락을 위한 버전 관리
-    private Long version;
-
     @Column(name = "hold_user_id")
     private Long holdUserId;
 
