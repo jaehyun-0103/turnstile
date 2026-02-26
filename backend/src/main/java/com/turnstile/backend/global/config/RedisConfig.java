@@ -2,8 +2,10 @@ package com.turnstile.backend.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
@@ -22,5 +24,13 @@ public class RedisConfig {
         template.setHashValueSerializer(serializer);
 
         return template;
+    }
+
+    @Bean
+    public DefaultRedisScript<Long> enterQueueScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("scripts/enter_queue.lua"));
+        script.setResultType(Long.class);
+        return script;
     }
 }

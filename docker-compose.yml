@@ -35,7 +35,7 @@ services:
       "redis-server",
       "--appendonly", "yes",
       "--maxmemory", "512mb",
-      "--maxmemory-policy", "allkeys-lru",
+      "--maxmemory-policy", "noeviction",
       "--save", "60", "1",
       "--tcp-keepalive", "60"
     ]
