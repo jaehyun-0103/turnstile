@@ -1,5 +1,5 @@
--- KEYS[1]: q:counter
--- KEYS[2]: q:waiting
+-- KEYS[1]: q:counter:{concertId}
+-- KEYS[2]: q:waiting:{concertId}
 -- ARGV[1]: User ID
 -- Score: 순번
 

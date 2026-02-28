@@ -1,5 +1,5 @@
--- KEYS[1]: q:waiting
--- KEYS[2]: q:active
+-- KEYS[1]: q:waiting:{concertId}
+-- KEYS[2]: q:active:{concertId}
 -- ARGV[1]: 빈자리 수
 -- ARGV[2]: 만료 시간
 -- Score: 만료시간
