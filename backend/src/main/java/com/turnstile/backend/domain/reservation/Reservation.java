@@ -5,8 +5,6 @@ import com.turnstile.backend.domain.user.User;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,8 +31,8 @@ public class Reservation extends BaseTimeEntity {
     @Column(length = 20)
     private ReservationStatus status;
 
-    @Column(nullable = false, precision = 19, scale = 0)
-    private BigDecimal price;
+    @Column(nullable = false)
+    private Long price;
 
     @Column(name = "reserved_at")
     private LocalDateTime reservedAt;

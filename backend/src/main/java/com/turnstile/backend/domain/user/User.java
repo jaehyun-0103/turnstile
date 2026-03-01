@@ -3,8 +3,7 @@ package com.turnstile.backend.domain.user;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.math.BigDecimal;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "users")
@@ -24,6 +23,7 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, precision = 19, scale = 0)
-    private BigDecimal balance;
+    @Column(nullable = false)
+    @Builder.Default
+    private Long balance = 0L;
 }

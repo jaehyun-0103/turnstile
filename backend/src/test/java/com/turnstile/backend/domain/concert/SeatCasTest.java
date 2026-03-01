@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +32,7 @@ class SeatCasTest {
         // given: 예약 가능한 좌석 생성 (AVAILABLE)
         ConcertSchedule schedule = createTestSchedule();
         Seat seat = seatRepository.saveAndFlush(Seat.builder()
-                .schedule(schedule).seatNo(10).price(new BigDecimal("50000")).status(SeatStatus.AVAILABLE).build());
+                .schedule(schedule).seatNo(10).price(50000L).status(SeatStatus.AVAILABLE).build());
 
         Long userId = 1L;
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
@@ -56,7 +54,7 @@ class SeatCasTest {
         // given: 누군가 이미 점유한 좌석 생성 (HOLD)
         ConcertSchedule schedule = createTestSchedule();
         Seat seat = seatRepository.saveAndFlush(Seat.builder()
-                .schedule(schedule).seatNo(20).price(new BigDecimal("50000")).status(SeatStatus.HOLD).build());
+                .schedule(schedule).seatNo(20).price(50000L).status(SeatStatus.HOLD).build());
 
         Long latecomerUserId = 2L;
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);

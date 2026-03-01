@@ -23,3 +23,7 @@ spring:
     redis:
       host: localhost
       port: 6380
+
+jwt:
+  secret: "turnstile-ticketing-system-secret-key"
+  expiration-time: 330000

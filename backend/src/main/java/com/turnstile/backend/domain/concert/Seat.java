@@ -3,8 +3,6 @@ package com.turnstile.backend.domain.concert;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,8 +26,8 @@ public class Seat extends BaseTimeEntity {
     @Column(name = "seat_no", nullable = false)
     private Integer seatNo;
 
-    @Column(nullable = false, precision = 19, scale = 0)
-    private BigDecimal price;
+    @Column(nullable = false)
+    private Long price;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
