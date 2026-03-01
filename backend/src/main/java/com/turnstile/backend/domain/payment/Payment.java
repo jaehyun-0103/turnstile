@@ -4,8 +4,6 @@ import com.turnstile.backend.domain.reservation.Reservation;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,8 +22,8 @@ public class Payment extends BaseTimeEntity {
     @JoinColumn(name = "reservation_id", nullable = false)
     private Reservation reservation;
 
-    @Column(nullable = false, precision = 19, scale = 0)
-    private BigDecimal amount;
+    @Column(nullable = false)
+    private Long amount;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

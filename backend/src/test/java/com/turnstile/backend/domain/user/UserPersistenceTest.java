@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-import java.math.BigDecimal;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -23,7 +21,7 @@ class UserPersistenceTest {
         User user = User.builder()
                 .username("test_username")
                 .name("test_name")
-                .balance(BigDecimal.ZERO)
+                .balance(0L)
                 .build();
 
         // when: DB 저장
