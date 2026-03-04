@@ -1,21 +1,28 @@
 package com.turnstile.backend.domain.concert;
 
+import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.config.JpaConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@Transactional
+@DataJpaTest
+@Import(JpaConfig.class)
 class SeatCasTest {
 
     @Autowired private SeatRepository seatRepository;
     @Autowired private ConcertRepository concertRepository;
     @Autowired private ConcertScheduleRepository concertScheduleRepository;
+
+    @MockitoBean
+    private CacheEvictor cacheEvictor;
 
     private ConcertSchedule createTestSchedule() {
         Concert concert = concertRepository.save(Concert.builder().title("test_concert").build());

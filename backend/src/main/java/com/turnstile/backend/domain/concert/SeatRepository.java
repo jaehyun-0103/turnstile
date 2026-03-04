@@ -28,4 +28,9 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
             "SET s.status = 'AVAILABLE', s.holdUserId = null, s.holdExpiresAt = null " +
             "WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
     int releaseExpiredSeats(@Param("now") LocalDateTime now);
+
+
+    // 3. 만료 좌석이 존재하는 스케줄 ID 식별 (캐시 무효화)
+    @Query("SELECT DISTINCT s.schedule.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
+    List<Long> findScheduleIdsByExpiredSeats(@Param("now") LocalDateTime now);
 }

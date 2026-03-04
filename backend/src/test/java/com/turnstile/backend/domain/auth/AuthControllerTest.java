@@ -25,6 +25,8 @@ class AuthControllerTest {
 
     @MockitoBean private AuthService authService;
 
+    @MockitoBean private JwtProvider jwtProvider;
+
     @Test
     @DisplayName("POST /api/v1/auth/login: 식별자를 전달하면 유저 정보와 잔액 반환")
     void loginApiTest() throws Exception {
