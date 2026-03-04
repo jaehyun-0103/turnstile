@@ -1,6 +1,7 @@
 package com.turnstile.backend.domain.queue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.turnstile.backend.domain.auth.JwtProvider;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +29,8 @@ class QueueControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private QueueService queueService;
+    @MockitoBean private JwtProvider jwtProvider;
+    @MockitoBean private RedisTemplate<String, String> redisTemplate;
 
     @Test
     @DisplayName("POST /api/v1/queue/entry: JSON 요청 시 진입 상태와 대기 순번 반환")
