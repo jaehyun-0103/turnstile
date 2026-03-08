@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.queue;
 
+import com.turnstile.backend.domain.queue.scheduler.QueueScheduler;
 import com.turnstile.backend.global.config.RedisConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
