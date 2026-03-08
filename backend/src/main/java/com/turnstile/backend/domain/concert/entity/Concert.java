@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.concert.entity;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "concert")
@@ -21,4 +22,7 @@ public class Concert extends BaseTimeEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "ticketing_start_at", nullable = false)
+    private LocalDateTime ticketingStartAt;
 }

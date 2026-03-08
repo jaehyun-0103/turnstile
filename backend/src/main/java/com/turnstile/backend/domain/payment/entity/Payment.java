@@ -1,6 +1,5 @@
 package com.turnstile.backend.domain.payment.entity;
 
-import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,9 +17,8 @@ public class Payment extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id", nullable = false)
-    private Reservation reservation;
+    @Column(name = "group_id", nullable = false, length = 50)
+    private String groupId;
 
     @Column(nullable = false)
     private Long amount;
