@@ -1,7 +1,9 @@
 package com.turnstile.backend.domain.queue;
 
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
+import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
+import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.global.config.RedisConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,13 +20,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
 @DataRedisTest
-@Import({RedisConfig.class, QueueService.class})
-class QueuePollingTest {
+@Import({RedisConfig.class, QueueRedisRepository.class, QueueService.class})
+class QueueServicePollingTest {
 
     @Autowired private QueueService queueService;
     @Autowired private RedisTemplate<String, String> redisTemplate;
 
     @MockitoBean private JwtProvider jwtProvider;
+    @MockitoBean private ConcertRepository concertRepository;
 
     private static final Long CONCERT_ID = 1L;
     private static final String WAITING_QUEUE_KEY = "q:waiting:" + CONCERT_ID;

@@ -25,7 +25,7 @@ end
 
 -- 신규 진입 처리 및 순번 할당
 local newScore = redis.call('INCR', counterKey)
-redis.call('ZADD', waitingQueueKey, newScore, userId)
+redis.call('ZADD', waitingKey, newScore, userId)
 
 -- 스케줄러가 이 콘서트 대기열을 순회하도록 트리거(SADD) 활성화
 redis.call('SADD', activeConcertsKey, concertId)

@@ -1,7 +1,10 @@
 package com.turnstile.backend.domain.queue;
 
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
+import com.turnstile.backend.domain.concert.entity.Concert;
+import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
+import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.global.config.RedisConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,21 +16,25 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 @DataRedisTest
-@Import({RedisConfig.class, QueueService.class})
-class QueueConcurrencyTest {
+@Import({RedisConfig.class, QueueRedisRepository.class, QueueService.class})
+class QueueServiceConcurrencyTest {
 
     @Autowired private QueueService queueService;
     @Autowired private RedisTemplate<String, String> redisTemplate;
 
-    @MockitoBean private JwtProvider jwtProvider; // QueueService 로드를 위한 가짜 bean
+    @MockitoBean private JwtProvider jwtProvider;
+    @MockitoBean private ConcertRepository concertRepository;
 
     private static final Long CONCERT_ID = 1L;
     private static final String COUNTER_KEY = "q:counter:" + CONCERT_ID;
@@ -43,6 +50,13 @@ class QueueConcurrencyTest {
     @Test
     @DisplayName("1000명이 동시에 진입해도 대기열에 1000명이 정확히 등록")
     void concurrentEnterQueueTest() throws InterruptedException {
+        // given: 예매 오픈 시간이 이미 지난 콘서트로 가짜 응답 세팅
+        Concert mockConcert = Concert.builder()
+                .title("test_concert")
+                .ticketingStartAt(LocalDateTime.now().minusDays(1)) // 어제 오픈
+                .build();
+        given(concertRepository.findById(CONCERT_ID)).willReturn(Optional.of(mockConcert));
+
         // given: 1000명 동시 요청 환경 세팅
         int threadCount = 1000;
         ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();

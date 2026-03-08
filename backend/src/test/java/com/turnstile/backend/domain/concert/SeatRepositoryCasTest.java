@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @Import(JpaConfig.class)
-class SeatCasTest {
+class SeatRepositoryCasTest {
 
     @Autowired private SeatRepository seatRepository;
     @Autowired private ConcertRepository concertRepository;
@@ -32,7 +32,10 @@ class SeatCasTest {
     private CacheEvictor cacheEvictor;
 
     private ConcertSchedule createTestSchedule() {
-        Concert concert = concertRepository.save(Concert.builder().title("test_concert").build());
+        Concert concert = concertRepository.save(Concert.builder()
+                .title("test_concert")
+                .ticketingStartAt(LocalDateTime.now().minusDays(1))
+                .build());
         return concertScheduleRepository.save(ConcertSchedule.builder()
                 .concert(concert)
                 .concertDate(LocalDateTime.now())
