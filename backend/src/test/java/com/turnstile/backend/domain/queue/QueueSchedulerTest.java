@@ -1,5 +1,7 @@
 package com.turnstile.backend.domain.queue;
 
+import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
+import com.turnstile.backend.domain.queue.scheduler.QueueScheduler;
 import com.turnstile.backend.global.config.RedisConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +15,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataRedisTest
-@Import({RedisConfig.class, QueueScheduler.class})
+@Import({RedisConfig.class, QueueRedisRepository.class, QueueScheduler.class})
 class QueueSchedulerTest {
 
     @Autowired private QueueScheduler queueScheduler;
@@ -50,7 +52,8 @@ class QueueSchedulerTest {
         }
 
         // when: 스케줄러 1회 강제 실행
-        queueScheduler.scheduleQueue();
+        queueScheduler.scheduleCleanup();
+        queueScheduler.scheduleAdmission();
 
         // then: 검증
         // 만료 1명 삭제 후 1명 유지 -> 빈자리 2명 채워 총 3명 유지

@@ -1,5 +1,7 @@
 package com.turnstile.backend.domain.user;
 
+import com.turnstile.backend.domain.user.entity.User;
+import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.config.JpaConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

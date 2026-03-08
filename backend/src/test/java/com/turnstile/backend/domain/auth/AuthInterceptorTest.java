@@ -2,6 +2,7 @@ package com.turnstile.backend.domain.auth;
 
 import com.turnstile.backend.domain.auth.annotation.LoginUser;
 import com.turnstile.backend.domain.auth.interceptor.AuthInterceptor;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.auth.resolver.LoginUserArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
