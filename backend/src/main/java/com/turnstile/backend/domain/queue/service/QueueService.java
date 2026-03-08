@@ -1,6 +1,6 @@
-package com.turnstile.backend.domain.queue;
+package com.turnstile.backend.domain.queue.service;
 
-import com.turnstile.backend.domain.auth.JwtProvider;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;

@@ -15,8 +15,6 @@ end
 
 -- 새로운 순번 할당 (INCR)
 local newScore = redis.call('INCR', counterKey)
-
--- 대기열에 유저를 추가할 때, 발급받은 순번을 Score 값으로 설정하여 등록
 redis.call('ZADD', waitingQueueKey, newScore, userId)
 
 -- 발급받은 순번 반환

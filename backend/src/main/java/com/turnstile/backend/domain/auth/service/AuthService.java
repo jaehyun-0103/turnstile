@@ -1,4 +1,4 @@
-package com.turnstile.backend.domain.auth;
+package com.turnstile.backend.domain.auth.service;
 
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;

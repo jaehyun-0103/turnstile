@@ -1,5 +1,6 @@
-package com.turnstile.backend.domain.user;
+package com.turnstile.backend.domain.user.repository;
 
+import com.turnstile.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

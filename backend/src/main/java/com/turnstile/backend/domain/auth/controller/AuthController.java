@@ -1,7 +1,8 @@
-package com.turnstile.backend.domain.auth;
+package com.turnstile.backend.domain.auth.controller;
 
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
+import com.turnstile.backend.domain.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

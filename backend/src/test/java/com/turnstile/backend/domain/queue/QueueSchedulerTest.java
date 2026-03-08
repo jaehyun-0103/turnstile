@@ -50,7 +50,7 @@ class QueueSchedulerTest {
         }
 
         // when: 스케줄러 1회 강제 실행
-        queueScheduler.scheduleQueue();
+        queueScheduler.scheduleAdmission();
 
         // then: 검증
         // 만료 1명 삭제 후 1명 유지 -> 빈자리 2명 채워 총 3명 유지

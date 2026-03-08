@@ -1,5 +1,12 @@
 package com.turnstile.backend.domain.concert;
 
+import com.turnstile.backend.domain.concert.entity.Concert;
+import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
+import com.turnstile.backend.domain.concert.entity.Seat;
+import com.turnstile.backend.domain.concert.entity.SeatStatus;
+import com.turnstile.backend.domain.concert.repository.ConcertRepository;
+import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
+import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.global.common.CacheEvictor;
 import com.turnstile.backend.global.config.JpaConfig;
 import org.junit.jupiter.api.DisplayName;

@@ -1,9 +1,8 @@
-package com.turnstile.backend.domain.user;
+package com.turnstile.backend.domain.user.entity;
 
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "users")

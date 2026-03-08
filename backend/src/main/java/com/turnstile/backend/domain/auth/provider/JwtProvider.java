@@ -1,4 +1,4 @@
-package com.turnstile.backend.domain.auth;
+package com.turnstile.backend.domain.auth.provider;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;

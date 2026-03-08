@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.auth;
 
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

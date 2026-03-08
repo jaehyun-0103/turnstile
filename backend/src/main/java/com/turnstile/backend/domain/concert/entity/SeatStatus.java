@@ -1,4 +1,4 @@
-package com.turnstile.backend.domain.concert;
+package com.turnstile.backend.domain.concert.entity;
 
 public enum SeatStatus {
     AVAILABLE, // 예약 가능

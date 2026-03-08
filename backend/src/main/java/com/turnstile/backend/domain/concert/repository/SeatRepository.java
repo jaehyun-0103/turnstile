@@ -1,5 +1,6 @@
-package com.turnstile.backend.domain.concert;
+package com.turnstile.backend.domain.concert.repository;
 
+import com.turnstile.backend.domain.concert.entity.Seat;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

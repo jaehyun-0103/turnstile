@@ -1,4 +1,4 @@
-package com.turnstile.backend.domain.concert;
+package com.turnstile.backend.domain.concert.entity;
 
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;

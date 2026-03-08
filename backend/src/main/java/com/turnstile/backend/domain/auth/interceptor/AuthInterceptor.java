@@ -1,6 +1,6 @@
 package com.turnstile.backend.domain.auth.interceptor;
 
-import com.turnstile.backend.domain.auth.JwtProvider;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

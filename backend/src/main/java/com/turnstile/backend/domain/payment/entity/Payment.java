@@ -1,6 +1,6 @@
-package com.turnstile.backend.domain.payment;
+package com.turnstile.backend.domain.payment.entity;
 
-import com.turnstile.backend.domain.reservation.Reservation;
+import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;

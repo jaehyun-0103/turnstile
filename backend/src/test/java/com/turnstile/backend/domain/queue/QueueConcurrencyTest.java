@@ -1,7 +1,8 @@
 package com.turnstile.backend.domain.queue;
 
-import com.turnstile.backend.domain.auth.JwtProvider;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
+import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.global.config.RedisConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

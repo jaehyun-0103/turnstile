@@ -1,8 +1,11 @@
 package com.turnstile.backend.domain.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.turnstile.backend.domain.auth.controller.AuthController;
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
+import com.turnstile.backend.domain.auth.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

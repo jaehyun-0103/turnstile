@@ -1,7 +1,7 @@
-package com.turnstile.backend.domain.reservation;
+package com.turnstile.backend.domain.reservation.entity;
 
-import com.turnstile.backend.domain.concert.Seat;
-import com.turnstile.backend.domain.user.User;
+import com.turnstile.backend.domain.concert.entity.Seat;
+import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
