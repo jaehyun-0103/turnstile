@@ -63,6 +63,7 @@ public class RedisConfig {
         // LocalDateTime 파싱 에러 방지를 위한 JSON 직렬화 설정
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         objectMapper.activateDefaultTyping(
