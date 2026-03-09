@@ -34,7 +34,7 @@ public class QueueRedisRepository {
     }
 
     // Lua 스크립트를 통한 원자적 대기열 상태 전이 (입장)
-    public List<String> transitionQueue(String concertIdStr, long maxCapacity, long expireScore) {
+    public List<String> transitionQueue(String concertIdStr, long maxCapacity, long batchSize, long expireScore) {
         String waitingKey = "q:waiting:" + concertIdStr;
         String activeKey = "q:active:" + concertIdStr;
 
@@ -42,7 +42,8 @@ public class QueueRedisRepository {
                 transitionQueueScript,
                 List.of(waitingKey, activeKey),
                 String.valueOf(maxCapacity),
-                String.valueOf(expireScore)
+                String.valueOf(expireScore),
+                String.valueOf(batchSize)
         );
     }
 
@@ -73,6 +74,8 @@ public class QueueRedisRepository {
     public long getMaxActiveConfig(String concertIdStr) {
         String maxActiveConfigKey = "q:config:max_active:" + concertIdStr;
         String maxActiveStr = redisTemplate.opsForValue().get(maxActiveConfigKey);
-        return (maxActiveStr != null) ? Long.parseLong(maxActiveStr) : 100L;
+
+        // 초당 100명이 진입하여 5분(300초) 머물면 최대 수용 공간은 30,000명 필요
+        return (maxActiveStr != null) ? Long.parseLong(maxActiveStr) : 5000L;
     }
 }

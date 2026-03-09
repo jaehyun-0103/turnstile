@@ -2,6 +2,7 @@ package com.turnstile.backend.domain.queue.scheduler;
 
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,9 @@ import java.util.Set;
 public class QueueScheduler {
 
     private final QueueRedisRepository queueRedisRepository;
+
+    @Value("${queue.admission.batch-size:100}")
+    private long admissionBatchSize;
 
     @Scheduled(fixedDelay = 1000) // 1초마다 실행
     public void scheduleAdmission() {
@@ -33,7 +37,8 @@ public class QueueScheduler {
             long maxCapacity = queueRedisRepository.getMaxActiveConfig(concertIdStr);
 
             // Lua 스크립트 실행을 통한 원자적 대기열 상태 전이
-            List<String> enteredUsers = queueRedisRepository.transitionQueue(concertIdStr, maxCapacity, expireScore);
+            List<String> enteredUsers = queueRedisRepository.transitionQueue(
+                    concertIdStr, maxCapacity, admissionBatchSize, expireScore);
 
             if (enteredUsers != null && !enteredUsers.isEmpty()) {
                 log.info("콘서트 {} 입장 처리 완료: {}명", concertIdStr, enteredUsers.size());
