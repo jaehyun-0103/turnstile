@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.turnstile.backend.domain.reservation.entity.ReservationStatus.*;
 
 @SpringBootTest
 class ReservationServiceConcurrencyTest {
@@ -187,7 +188,7 @@ class ReservationServiceConcurrencyTest {
                     .groupId(groupId)
                     .user(testUser)
                     .seat(seat)
-                    .status(com.turnstile.backend.domain.reservation.entity.ReservationStatus.PENDING)
+                    .status(PENDING)
                     .price(seat.getPrice())
                     .reservedAt(LocalDateTime.now().minusMinutes(6))
                     .build());
