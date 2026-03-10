@@ -9,7 +9,9 @@ import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
+import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
+import com.turnstile.backend.domain.reservation.scheduler.SeatHoldScheduler;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
@@ -28,8 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 class ReservationServiceConcurrencyTest {
@@ -43,6 +45,7 @@ class ReservationServiceConcurrencyTest {
     @Autowired private ConcertScheduleRepository concertScheduleRepository;
     @Autowired private QueueRedisRepository queueRedisRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private SeatHoldScheduler seatHoldScheduler;
 
     private Long testConcertId;
     private Long testScheduleId;
@@ -164,5 +167,46 @@ class ReservationServiceConcurrencyTest {
         Seat resultSeat2 = seatRepository.findById(testSeatId2).orElseThrow();
         assertThat(resultSeat2.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
         assertThat(resultSeat2.getHoldUserId()).isNull();
+    }
+
+    @Test
+    @DisplayName("자원 회수 로직: 만료 시간이 지난 좌석과 예약은 스케줄러에 의해 각각 AVAILABLE과 EXPIRED로 정상 복구")
+    void schedulerRecoveryTest() {
+        // given: 5분이 지난 만료된 점유 좌석과 PENDING 상태의 예약 데이터 셋업
+        final String groupId = "test-expired-group";
+
+        transactionTemplate.execute(status -> {
+            Seat seat = seatRepository.findById(testSeatId1).orElseThrow();
+
+            // 현재 시간보다 1분 전으로 점유 만료 시간 강제 설정
+            LocalDateTime pastExpiredTime = LocalDateTime.now().minusMinutes(1);
+            seatRepository.holdSeatConditionally(seat.getId(), testUser.getId(), pastExpiredTime);
+
+            // 해당 좌석을 점유 중인 PENDING 상태의 예약 생성 (6분 전 생성)
+            reservationRepository.save(Reservation.builder()
+                    .groupId(groupId)
+                    .user(testUser)
+                    .seat(seat)
+                    .status(com.turnstile.backend.domain.reservation.entity.ReservationStatus.PENDING)
+                    .price(seat.getPrice())
+                    .reservedAt(LocalDateTime.now().minusMinutes(6))
+                    .build());
+            return null;
+        });
+
+        // when: 만료 자원 회수 스케줄러 강제 실행
+        seatHoldScheduler.recoverExpiredSeats();
+
+        // then: 좌석 상태가 AVAILABLE로 복구되고 점유 정보가 초기화되었는지 검증
+        Seat recoveredSeat = seatRepository.findById(testSeatId1).orElseThrow();
+        assertThat(recoveredSeat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
+        assertThat(recoveredSeat.getHoldUserId()).isNull();
+        assertThat(recoveredSeat.getHoldExpiresAt()).isNull();
+
+        // then: 연관된 예약 건이 EXPIRED(만료) 처리되었는지 검증
+        List<Reservation> reservations = reservationRepository.findAllByGroupId(groupId);
+        assertThat(reservations).hasSize(1);
+        assertThat(reservations.get(0).getStatus())
+                .isEqualTo(com.turnstile.backend.domain.reservation.entity.ReservationStatus.EXPIRED);
     }
 }
