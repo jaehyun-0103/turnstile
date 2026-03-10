@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.reservation.service;
 
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Seat;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
@@ -10,6 +11,7 @@ import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
+import com.turnstile.backend.global.common.CacheEvictor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,8 @@ public class ReservationService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
+    private final CacheEvictor cacheEvictor;
+    private final JwtProvider jwtProvider;
 
     @Transactional
     public ReservationResponse reserveSeats(ReservationRequest request) {
@@ -81,10 +85,18 @@ public class ReservationService {
 
         reservationRepository.saveAll(reservations);
 
+        // 캐시 즉시 무효화 (팬텀 클릭 차단)
+        Long scheduleId = seats.get(0).getSchedule().getId(); // Seat 엔티티 매핑 반영
+        cacheEvictor.evictSeatCache(scheduleId);
+
+        // 결제용 JWT 발급 (5분 30초 TTL)
+        String paymentToken = jwtProvider.generateToken(request.userId());
+
         return new ReservationResponse(
                 groupId,
                 ReservationStatus.PENDING.name(),
-                expiresAt
+                expiresAt,
+                paymentToken
         );
     }
 }

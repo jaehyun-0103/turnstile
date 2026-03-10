@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record ReservationResponse(
         String groupId,
         String status,
-        LocalDateTime expiredAt
+        LocalDateTime expiredAt,
+        String accessToken
 ) {
 }
