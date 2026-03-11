@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
@@ -55,10 +56,14 @@ public class QueueService {
         String concertIdStr = String.valueOf(concertId);
         String userIdStr = String.valueOf(userId);
 
+        // Redis에서 유저의 만료 시간(Score)을 직접 조회
+        Double expireTimestamp = queueRedisRepository.getActiveUserScore(concertIdStr, userIdStr);
+
         // 진입 완료 상태 확인
-        if (queueRedisRepository.isActiveUser(concertIdStr, userIdStr)) {
-            // 진입 완료 상태면 JWT 토큰 발급 (설계서 고정 TTL 원칙에 따라 Redis 만료시간 연장 절대 불가)
-            String accessToken = jwtProvider.generateToken(userId);
+        if (expireTimestamp != null) {
+            // Redis에 기록된 정확한 만료 시점으로 토큰 발급 (재발급 시에도 만료 시각 고정)
+            Date expiryDate = new Date(expireTimestamp.longValue() * 1000);
+            String accessToken = jwtProvider.generateToken(userId, expiryDate);
             return new QueueStatusResponse(concertId, 0L, "ACTIVE", accessToken);
         }
 

@@ -18,25 +18,31 @@ import java.util.Date;
 public class JwtProvider {
 
     private final SecretKey secretKey;
-    private final long expirationTime;
+    private final long defaultExpirationTime;
 
     public JwtProvider(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration-time}") long expirationTime) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.expirationTime = expirationTime;
+        this.defaultExpirationTime = expirationTime;
     }
 
     // 토큰 생성 (userId를 페이로드에 저장)
     public String generateToken(Long userId) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + expirationTime);
+        Date validity = new Date(now.getTime() + defaultExpirationTime);
+        return generateToken(userId, validity);
+    }
+
+    // 특정 만료 시점을 주입받는 동적 토큰 생성 메서드
+    public String generateToken(Long userId, Date expiryDate) {
+        Date now = new Date();
 
         return Jwts.builder()
-                .claim("userId", userId) // Payload에 userId 담기
+                .claim("userId", userId)
                 .issuedAt(now)
-                .expiration(validity)
-                .signWith(secretKey)     // Secret Key로 서명
+                .expiration(expiryDate) // 주입받은 만료 시간 설정
+                .signWith(secretKey)
                 .compact();
     }
 
