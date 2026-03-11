@@ -12,10 +12,12 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
-    public void deductBalance(Long userId, Long amount) {
+    public Long deductBalance(Long userId, Long amount) {
         int updatedCount = userRepository.deductBalance(userId, amount);
         if (updatedCount == 0) {
             throw new IllegalArgumentException("잔액이 부족합니다.");
         }
+
+        return userRepository.findById(userId).orElseThrow().getBalance();
     }
 }

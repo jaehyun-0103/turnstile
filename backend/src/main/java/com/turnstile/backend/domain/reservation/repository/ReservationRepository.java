@@ -22,4 +22,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "WHERE r.status = 'PENDING' AND r.seat.id IN " +
             "(SELECT s.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now)")
     int expirePendingReservations(@Param("now") LocalDateTime now);
+
+    // 예약 상태를 PAID로 변경
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Reservation r SET r.status = 'PAID' WHERE r.groupId = :groupId")
+    int confirmReservations(@Param("groupId") String groupId);
 }
