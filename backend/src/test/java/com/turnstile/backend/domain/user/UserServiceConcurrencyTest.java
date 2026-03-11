@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 class UserServiceConcurrencyTest {
@@ -72,5 +73,22 @@ class UserServiceConcurrencyTest {
 
         // Race Condition(경쟁 상태)으로 인한 데이터 유실 없이 최종 잔액이 정확히 100,000원(100 * 1,000)으로 누적
         assertThat(updatedUser.getBalance()).isEqualTo(threadCount * chargeAmount);
+    }
+
+    @Test
+    @DisplayName("잔액 충전 경계값 검증: 충전 금액이 0 이하일 경우 예외가 발생한다")
+    void chargeBalance_Fail_BoundaryValue() {
+        // given: 예외 상황을 테스트할 임의의 대상 유저 ID 세팅
+        Long userId = 1L;
+
+        // when & then: 0원 충전 시도 검증
+        assertThatThrownBy(() -> userService.chargeBalance(userId, 0L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("충전 금액은 0보다 커야 합니다.");
+
+        // when & then: 음수 금액 충전 시도 검증
+        assertThatThrownBy(() -> userService.chargeBalance(userId, -5000L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("충전 금액은 0보다 커야 합니다.");
     }
 }
