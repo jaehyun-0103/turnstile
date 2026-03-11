@@ -72,4 +72,24 @@ class JwtProviderTest {
         // then
         assertThat(isValid).isFalse();
     }
+
+    @Test
+    @DisplayName("동적 TTL 적용: 주입된 특정 시점에 토큰이 정확히 만료")
+    void generateTokenWithDynamicExpiryTest() throws InterruptedException {
+        // given: 현재로부터 2초 뒤에 만료되도록 설정
+        long duration = 2000L;
+        java.util.Date expiryDate = new java.util.Date(System.currentTimeMillis() + duration);
+        Long userId = 100L;
+
+        // when: 동적 TTL 메서드로 토큰 생성
+        String token = jwtProvider.generateToken(userId, expiryDate);
+
+        // then: 생성 직후에는 유효함
+        assertThat(jwtProvider.validateToken(token)).isTrue();
+        assertThat(jwtProvider.extractUserId(token)).isEqualTo(userId);
+
+        // then: 2초 대기 후 만료 여부 확인 (동적 TTL이 제대로 박혔는지 검증)
+        Thread.sleep(2100L);
+        assertThat(jwtProvider.validateToken(token)).isFalse();
+    }
 }
