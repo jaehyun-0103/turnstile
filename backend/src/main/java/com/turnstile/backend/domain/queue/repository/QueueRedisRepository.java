@@ -78,4 +78,10 @@ public class QueueRedisRepository {
         // 초당 100명이 진입하여 5분(300초) 머물면 최대 수용 공간은 30,000명 필요
         return (maxActiveStr != null) ? Long.parseLong(maxActiveStr) : 5000L;
     }
+
+    // ZSET의 Score 조회
+    public Double getActiveUserScore(String concertIdStr, String userIdStr) {
+        String activeKey = "q:active:" + concertIdStr;
+        return redisTemplate.opsForZSet().score(activeKey, userIdStr);
+    }
 }

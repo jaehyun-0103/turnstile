@@ -19,10 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -90,8 +87,12 @@ public class ReservationService {
         Long scheduleId = seats.get(0).getSchedule().getId(); // Seat 엔티티 매핑 반영
         cacheEvictor.evictSeatCache(scheduleId);
 
+
+        long paymentExpiryMillis = 330 * 1000L;
+        Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
+
         // 결제용 JWT 발급 (5분 30초 TTL)
-        String paymentToken = jwtProvider.generateToken(request.userId());
+        String paymentToken = jwtProvider.generateToken(request.userId(), paymentExpiryDate);
 
         return new ReservationResponse(
                 groupId,
