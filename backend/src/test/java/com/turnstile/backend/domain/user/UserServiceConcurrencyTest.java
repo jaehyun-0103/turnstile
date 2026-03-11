@@ -1,7 +1,8 @@
-package com.turnstile.backend.domain.user.service;
+package com.turnstile.backend.domain.user;
 
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
+import com.turnstile.backend.domain.user.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
