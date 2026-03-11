@@ -54,6 +54,13 @@ public class PaymentService {
             throw new IllegalArgumentException("요청된 결제 금액이 실제 예약 금액과 일치하지 않습니다.");
         }
 
+        // PENDING 조건절(CAS)을 활용한 멱등성 확보 및 이중 결제 방어
+        int updatedReservationCount = reservationRepository.confirmReservations(request.groupId());
+        if (updatedReservationCount == 0) {
+            log.warn("🚨 중복 결제 방어 작동 - groupId: {}", request.groupId());
+            throw new IllegalStateException("이미 결제가 완료되었거나 만료된 예약입니다.");
+        }
+
         // 유저 잔액 원자적 차감 (이때 Persistence Context가 1차로 비워짐)
         Long remainingBalance = userService.deductBalance(request.userId(), totalAmount);
 

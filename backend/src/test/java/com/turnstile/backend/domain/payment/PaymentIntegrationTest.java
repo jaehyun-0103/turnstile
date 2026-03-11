@@ -23,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
@@ -43,6 +44,7 @@ class PaymentIntegrationTest {
     @Autowired private ConcertScheduleRepository concertScheduleRepository;
     @Autowired private QueueRedisRepository queueRedisRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private RedisTemplate<String, String> redisTemplate; // RedisTemplate 추가
 
     private User testUser;
     private Long testConcertId;
@@ -51,6 +53,9 @@ class PaymentIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // 테스트 간 캐시 및 대기열 데이터 오염 방지를 위해 Redis 전체 초기화
+        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
+
         // 테스트 간 데이터 오염 방지 및 완벽한 독립성 보장을 위해 연관된 DB 테이블 모두 초기화
         transactionTemplate.execute(status -> {
             reservationRepository.deleteAllInBatch();
@@ -159,7 +164,7 @@ class PaymentIntegrationTest {
     @Test
     @DisplayName("결제 검증 실패: 금액 불일치, 잔액 부족, 권한 만료 등 예외 상황 시 결제가 거부되어야 한다.")
     void paymentValidationFailTests() {
-        // given: 1. 결제 요청 금액이 실제 예약 금액과 불일치하는 상황 세팅 (예약은 15만원, 요청은 1만원)
+        // given: 결제 요청 금액이 실제 예약 금액과 불일치하는 상황 세팅 (예약은 15만원, 요청은 1만원)
         PaymentRequest wrongAmountRequest = new PaymentRequest(testUser.getId(), testGroupId, 10000L);
 
         // when & then: 금액 불일치 검증
@@ -168,7 +173,7 @@ class PaymentIntegrationTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("일치하지 않습니다");
 
-        // given: 2. 유저의 잔액이 부족한 상황 세팅 (DB 잔액을 강제로 0원으로 차감)
+        // given: 유저의 잔액이 부족한 상황 세팅 (DB 잔액을 강제로 0원으로 차감)
         transactionTemplate.execute(s -> {
             userRepository.deductBalance(testUser.getId(), 200000L);
             return null;
@@ -181,7 +186,7 @@ class PaymentIntegrationTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("잔액이 부족합니다");
 
-        // given: 3. 대기열 권한(활성 상태)이 없는 엉뚱한 유저 세팅
+        // given: 대기열 권한(활성 상태)이 없는 엉뚱한 유저 세팅
         User unauthorizedUser = transactionTemplate.execute(s ->
                 userRepository.save(User.builder().username("hacker").name("해커").balance(500000L).build()));
         PaymentRequest unauthorizedRequest = new PaymentRequest(unauthorizedUser.getId(), testGroupId, 150000L);
@@ -191,5 +196,24 @@ class PaymentIntegrationTest {
         assertThatThrownBy(() -> paymentService.processPayment(unauthorizedRequest))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("권한(대기열)이 만료되었습니다");
+    }
+
+    @Test
+    @DisplayName("이중 결제 방어: 동일한 groupId로 결제를 두 번 시도하면 두 번째 요청은 상태 기반(CAS) 로직에 의해 차단")
+    void doublePaymentPreventionTest() {
+        // given: 200,000원 보유 유저가 150,000원 결제를 요청하는 환경 세팅
+        PaymentRequest request = new PaymentRequest(testUser.getId(), testGroupId, 150000L);
+
+        // when: 1차 결제 시도 (정상 성공)
+        paymentService.processPayment(request);
+
+        // then: 2차 결제 시도 검증 (연타 상황)
+        assertThatThrownBy(() -> paymentService.processPayment(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("이미 결제가 완료되었거나 만료된 예약입니다");
+
+        // then: 예외처리로 유저의 잔액이 이중 차감 없이 딱 1번(50,000원 남음)만 차감되었는지 확인
+        User resultUser = userRepository.findById(testUser.getId()).orElseThrow();
+        assertThat(resultUser.getBalance()).isEqualTo(50000L);
     }
 }
