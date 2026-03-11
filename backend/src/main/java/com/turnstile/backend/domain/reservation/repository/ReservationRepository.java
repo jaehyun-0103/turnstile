@@ -27,4 +27,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Reservation r SET r.status = 'PAID' WHERE r.groupId = :groupId AND r.status = 'PENDING'")
     int confirmReservations(@Param("groupId") String groupId);
+
+    // 유저 ID로 예약 내역 조회 (Fetch Join으로 성능 최적화)
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN FETCH r.seat s " +
+            "JOIN FETCH s.schedule sc " +
+            "JOIN FETCH sc.concert c " +
+            "WHERE r.user.id = :userId " +
+            "ORDER BY r.reservedAt DESC")
+    List<Reservation> findAllByUserIdWithDetails(@Param("userId") Long userId);
 }

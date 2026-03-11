@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Seat;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
+import com.turnstile.backend.domain.reservation.dto.MyReservationResponse;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.dto.ReservationResponse;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
@@ -98,5 +99,21 @@ public class ReservationService {
                 expiresAt,
                 paymentToken
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyReservationResponse> getMyReservations(Long userId) {
+        return reservationRepository.findAllByUserIdWithDetails(userId).stream()
+                .map(r -> new MyReservationResponse(
+                        r.getId(),
+                        r.getGroupId(),
+                        r.getSeat().getSchedule().getConcert().getTitle(),
+                        r.getSeat().getSchedule().getConcertDate(),
+                        r.getSeat().getSeatNo(),
+                        r.getStatus(),
+                        r.getPrice(),
+                        r.getReservedAt()
+                ))
+                .toList();
     }
 }
