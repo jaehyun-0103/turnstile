@@ -12,9 +12,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // username 필드로 User 조회
     Optional<User> findByUsername(String username);
 
-    // DB 레벨 원자적 잔액 차감 (초과 차감 원천 방지)
+    // 원자적 잔액 차감 (초과 차감 원천 방지)
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.balance = u.balance - :amount " +
             "WHERE u.id = :userId AND u.balance >= :amount")
     int deductBalance(@Param("userId") Long userId, @Param("amount") Long amount);
+
+    // 원자적 잔액 충전
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE User u SET u.balance = u.balance + :amount WHERE u.id = :userId")
+    int chargeBalance(@Param("userId") Long userId, @Param("amount") Long amount);
 }
