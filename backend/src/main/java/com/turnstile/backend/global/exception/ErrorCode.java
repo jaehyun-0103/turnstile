@@ -1,0 +1,42 @@
+package com.turnstile.backend.global.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum ErrorCode {
+
+    // Common & Infrastructure
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력값입니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "C003", "허용되지 않은 HTTP 메서드입니다."),
+
+    // Auth & User
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "사용자를 찾을 수 없습니다."),
+    INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "U002", "잔액이 부족합니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다."),
+    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "만료된 토큰입니다."),
+
+    // Queue
+    TICKETING_NOT_OPEN(HttpStatus.BAD_REQUEST, "Q001", "예매 오픈 전입니다."),
+    QUEUE_NOT_ACTIVE(HttpStatus.FORBIDDEN, "Q002", "대기열 권한이 없거나 만료되었습니다."),
+
+    // Concert & Seat
+    CONCERT_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "존재하지 않는 콘서트입니다."),
+    SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "S002", "존재하지 않는 회차입니다."),
+    SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "S003", "존재하지 않는 좌석입니다."),
+    SEAT_ALREADY_HELD(HttpStatus.CONFLICT, "S004", "이미 선택된 좌석입니다."),
+    SEAT_ALREADY_SOLD(HttpStatus.CONFLICT, "S005", "이미 판매 완료된 좌석입니다."),
+
+    // Reservation & Payment
+    RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "예약 정보를 찾을 수 없습니다."),
+    ALREADY_PAID(HttpStatus.BAD_REQUEST, "P002", "이미 결제가 완료된 예약입니다."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "P003", "결제 금액이 일치하지 않습니다."),
+    CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다."); // CAS 실패 대응
+
+    private final HttpStatus status;
+    private final String code;
+    private final String message;
+}
