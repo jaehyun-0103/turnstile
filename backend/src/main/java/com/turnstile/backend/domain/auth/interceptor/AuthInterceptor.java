@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+/**
+ * HTTP 요청의 JWT 토큰 유효성을 검증하고 인증 정보를 설정하는 인터셉터입니다.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,7 +25,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // CORS 처리를 위한 OPTIONS 메서드는 인증 없이 통과
+        // 브라우저의 CORS 예비 요청은 인증 확인 대상에서 제외함
         if (request.getMethod().equals("OPTIONS")) {
             return true;
         }
@@ -34,7 +37,6 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
 
-        // Provider 내부에서 검증 실패 시 상세 에러 코드를 담은 TurnstileException이 발생함
         jwtProvider.validateToken(token);
 
         Long userId = jwtProvider.extractUserId(token);
@@ -43,7 +45,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    // 헤더에서 Bearer 토큰 추출
+    /**
+     * HTTP 요청 헤더에서 Bearer 토큰 문자열을 추출합니다.
+     */
     private String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {

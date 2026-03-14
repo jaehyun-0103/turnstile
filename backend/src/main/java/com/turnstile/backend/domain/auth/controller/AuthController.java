@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 사용자 인증 및 권한 관련 요청을 처리하는 컨트롤러입니다.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -19,7 +22,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // 로그인 API
+    /**
+     * 사용자 로그인을 수행하고 인증 토큰을 포함한 정보를 반환합니다.
+     * @param request 로그인 요청 정보
+     * @return 로그인 성공 결과 응답
+     */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         log.info("[Auth] Login Attempt | (username: {})", request.username());
