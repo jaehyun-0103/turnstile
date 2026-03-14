@@ -10,6 +10,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * 모든 엔티티의 생성 및 수정 시각을 자동으로 관리하는 기본 클래스입니다.
+ */
 @Getter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class) // 생성일 및 수정일 자동 감지

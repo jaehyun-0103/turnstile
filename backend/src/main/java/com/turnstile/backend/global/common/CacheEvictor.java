@@ -18,6 +18,7 @@ public class CacheEvictor {
      * Reservation(HOLD), Payment(SOLD), Scheduler(RELEASE) 시점에 호출됩니다.
      */
     public void evictSeatCache(Long scheduleId) {
+        log.info("[Global] Cache Eviction | Success (type: Seat, scheduleId: {})", scheduleId);
         redisTemplate.delete(SEAT_CACHE_PREFIX + scheduleId);
     }
 }

@@ -23,7 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@EnableCaching // 스프링 캐시 추상화 활성화
+/**
+ * Redis 데이터 구조 및 캐시 만료 정책을 정의하는 설정 클래스입니다.
+ */
+@EnableCaching
 @Configuration
 public class RedisConfig {
 
@@ -42,6 +45,9 @@ public class RedisConfig {
         return template;
     }
 
+    /**
+     * 대기열 진입 및 상태 확인을 위한 Redis 스크립트 빈을 등록합니다.
+     */
     @Bean
     public DefaultRedisScript<Long> enterQueueScript() {
         DefaultRedisScript<Long> script = new DefaultRedisScript<>();
@@ -60,35 +66,32 @@ public class RedisConfig {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // LocalDateTime 파싱 에러 방지를 위한 JSON 직렬화 설정
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
+        // 캐시 데이터 역직렬화 시 구체적인 객체 타입을 식별하기 위해 타입 정보를 함께 저장하도록 설정
         objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
-                        .allowIfBaseType(Object.class) // 모든 객체에 대해 허용
+                        .allowIfBaseType(Object.class)
                         .build(),
-                ObjectMapper.DefaultTyping.EVERYTHING, // List, final 클래스 가리지 않고 전부 기록
+                ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
         );
 
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-        // 캐시 기본 설정 및 키 생성 규칙
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
-                // Spring 기본 구분자('::') 대신 CacheEvictor와 일치하도록 ':' 오버라이딩
+                // CacheEvictor에서 관리하는 키 패턴과 일치하도록 구분자 설정
                 .computePrefixWith(cacheName -> cacheName + ":");
 
-        // 도메인 성격에 따른 TTL 차등 적용
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         cacheConfigurations.put("concerts:cache", defaultConfig.entryTtl(Duration.ofHours(1)));
         cacheConfigurations.put("schedules:cache", defaultConfig.entryTtl(Duration.ofHours(1)));
-        // 좌석은 홀드/결제 등 변동성이 크므로 짧은 TTL 부여
         cacheConfigurations.put("seats:cache", defaultConfig.entryTtl(Duration.ofMinutes(1)));
 
         return RedisCacheManager.builder(connectionFactory)
