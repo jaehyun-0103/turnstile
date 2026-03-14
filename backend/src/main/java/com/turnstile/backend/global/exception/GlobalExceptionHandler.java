@@ -21,12 +21,11 @@ public class GlobalExceptionHandler {
 
         // 방어 코드: errorCode가 null이면 500으로 처리
         if (errorCode == null) {
-            log.error("[Unhandled Exception] TurnstileException thrown without ErrorCode", e);
+            log.error("[Global] Internal Error | TurnstileException thrown without ErrorCode (message: {})", e.getMessage());
             return handleException(e);
         }
 
-        log.warn("Business Exception: [{} - {}] {}",
-                errorCode.getCode(), errorCode.getStatus(), e.getMessage());
+        log.warn("[Global] Business Exception | Fail - Code: {} (message: {})", errorCode.getCode(), e.getMessage());
 
         return ResponseEntity
                 .status(errorCode.getStatus())
@@ -39,7 +38,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NoResourceFoundException.class)
     protected ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
-        log.warn("[Client Exception] NoResourceFoundException: {}", e.getMessage());
+        log.warn("[Global] Client Exception | Fail - Code: {} (url: {})", ErrorCode.RESOURCE_NOT_FOUND.getCode(), e.getMessage());
+
         return ResponseEntity
                 .status(ErrorCode.RESOURCE_NOT_FOUND.getStatus())
                 .body(ErrorResponse.of(ErrorCode.RESOURCE_NOT_FOUND));
@@ -51,7 +51,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     protected ResponseEntity<ErrorResponse> handleMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
-        log.warn("[Client Exception] HttpRequestMethodNotSupportedException: {}", e.getMessage());
+        log.warn("[Global] Client Exception | Fail - Code: {} (method: {})", ErrorCode.METHOD_NOT_ALLOWED.getCode(), e.getMethod());
+
         return ResponseEntity
                 .status(ErrorCode.METHOD_NOT_ALLOWED.getStatus())
                 .body(ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED));
@@ -63,7 +64,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<ErrorResponse> handleException(Exception e) {
-        log.error("[Unhandled Exception] Unexpected error occurred: ", e);
+        log.error("[Global] Internal Error | Unexpected error occurred (message: {})", e.getMessage(), e);
 
         return ResponseEntity
                 .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
