@@ -1,5 +1,7 @@
 package com.turnstile.backend.domain.auth.provider;
 
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -47,29 +49,33 @@ public class JwtProvider {
     }
 
     // 토큰 유효성 검증
-    public boolean validateToken(String token) {
+    public void validateToken(String token) {
         try {
             Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
-            return true;
         } catch (ExpiredJwtException e) {
-            log.warn("만료된 JWT 토큰입니다.");
+            // 만료된 토큰 전용 에러 코드 적용
+            throw new TurnstileException(ErrorCode.EXPIRED_TOKEN);
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("유효하지 않은 JWT 토큰입니다.");
+            // 변조되었거나 잘못된 형식의 토큰 에러 코드 적용
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
-        return false;
     }
 
     // 토큰에서 userId 추출
     public Long extractUserId(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-        return claims.get("userId", Long.class);
+            return claims.get("userId", Long.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
     }
 }
