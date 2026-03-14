@@ -30,6 +30,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         String token = resolveToken(request);
 
         if (token == null) {
+            log.warn("[Auth] Authorize | Fail - Token missing (URI: {})", request.getRequestURI());
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
 
