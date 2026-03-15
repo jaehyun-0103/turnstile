@@ -23,7 +23,6 @@ import java.util.List;
 
 /**
  * 예약된 좌석에 대한 최종 결제 처리를 담당하는 서비스입니다.
- * 서버가 발행한 결제용 토큰의 유효성을 전제로 비즈니스 로직을 수행합니다.
  */
 @Slf4j
 @Service
@@ -34,23 +33,18 @@ public class PaymentService {
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final PaymentRepository paymentRepository;
-    private final QueueRedisRepository queueRedisRepository;
     private final CacheEvictor cacheEvictor;
 
     /**
      * 임시 예약된 좌석들의 결제를 진행하고, 유저 잔액 차감 및 좌석 상태를 확정합니다.
-     * @param request 결제 요청 정보 (그룹 ID, 결제 금액 등)
-     * @return 결제 완료 정보 및 차감 후 잔액
      */
     @Transactional
     public PaymentResponse processPayment(PaymentRequest request) {
         // 예약 정보 존재 여부 확인
-        List<Reservation> reservations = reservationRepository.findAllByGroupId(request.groupId());
+        List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(request.groupId());
         if (reservations.isEmpty()) {
             throw new TurnstileException(ErrorCode.RESERVATION_NOT_FOUND, "요청 그룹 ID: " + request.groupId());
         }
-
-        Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
 
         // 결제 금액 위변조 여부 검증
         long totalAmount = reservations.stream().mapToLong(Reservation::getPrice).sum();
@@ -79,6 +73,7 @@ public class PaymentService {
                 .build());
 
         // 캐시 무효화
+        Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
         cacheEvictor.evictSeatCache(scheduleId);
 
         log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", request.userId(), payment.getId(), totalAmount);

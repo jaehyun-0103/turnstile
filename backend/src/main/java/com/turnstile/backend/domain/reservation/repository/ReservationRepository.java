@@ -14,9 +14,14 @@ import java.util.List;
  */
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
-    List<Reservation> findAllByUserId(Long userId);
-
-    List<Reservation> findAllByGroupId(String groupId);
+    /**
+     * Seat과 Schedule을 한 번에 조회(Fetch Join)합니다.
+     */
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN FETCH r.seat s " +
+            "JOIN FETCH s.schedule " +
+            "WHERE r.groupId = :groupId")
+    List<Reservation> findAllByGroupIdWithSeat(@Param("groupId") String groupId);
 
     /**
      * 스케줄러 전용: 점유 시간이 지나 만료된 좌석을 참조하고 있는 PENDING 상태의 예약을 EXPIRED로 일괄 처리합니다.
