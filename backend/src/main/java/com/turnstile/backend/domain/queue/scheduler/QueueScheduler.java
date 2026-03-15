@@ -41,7 +41,7 @@ public class QueueScheduler {
                     concertIdStr, maxCapacity, admissionBatchSize, expireScore);
 
             if (enteredUsers != null && !enteredUsers.isEmpty()) {
-                log.info("콘서트 {} 입장 처리 완료: {}명", concertIdStr, enteredUsers.size());
+                log.info("[Queue] Scheduler Transition | Success (concertId: {}, enteredCount: {})", concertIdStr, enteredUsers.size());
             }
         }
     }
@@ -59,6 +59,8 @@ public class QueueScheduler {
         for (String concertIdStr : activeConcerts) {
             // 10초마다 만료된 진입 완료 유저 데이터 일괄 삭제
             queueRedisRepository.removeExpiredActiveUsers(concertIdStr, now);
+            // 10초마다 도는 Cleanup 로직은 스팸 방지를 위해 DEBUG 레벨로 기록
+            log.debug("[Queue] Scheduler Cleanup | Executed (concertId: {})", concertIdStr);
         }
     }
 }

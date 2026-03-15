@@ -5,9 +5,11 @@ import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/queue")
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class QueueController {
     // 대기열 진입 API
     @PostMapping("/entry")
     public ResponseEntity<QueueEntryResponse> enterQueue(@RequestBody QueueEntryRequest request) {
+        log.info("[Queue] API Request | Enter Queue (userId: {}, concertId: {})", request.userId(), request.concertId());
         QueueEntryResponse response = queueService.enterQueue(request);
         return ResponseEntity.ok(response);
     }
@@ -27,7 +30,8 @@ public class QueueController {
     public ResponseEntity<QueueStatusResponse> getQueueStatus(
             @RequestParam Long concertId,
             @RequestParam Long userId) {
-
+        // 폴링 요청이므로 디버그 레벨로 설정하여 평상시 로그 스팸을 방지함
+        log.debug("[Queue] API Request | Get Queue Status (userId: {}, concertId: {})", userId, concertId);
         QueueStatusResponse status = queueService.getQueueStatus(concertId, userId);
         return ResponseEntity.ok(status);
     }

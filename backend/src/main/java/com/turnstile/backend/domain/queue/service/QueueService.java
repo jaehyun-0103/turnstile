@@ -10,11 +10,13 @@ import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Date;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QueueService {
@@ -41,6 +43,7 @@ public class QueueService {
 
         Long result = queueRedisRepository.enterQueue(concertIdStr, userIdStr);
         if (result == -1L) { // 이미 진입 완료 상태인지 확인
+            log.info("[Queue] Enter Queue | Success - Already Active (userId: {}, concertId: {})", request.userId(), request.concertId());
             return new QueueEntryResponse(request.concertId(), 0L, "ACTIVE");
         }
 
@@ -50,6 +53,7 @@ public class QueueService {
             rank = 0L;
         }
 
+        log.info("[Queue] Enter Queue | Success - Waiting (userId: {}, concertId: {}, rank: {})", request.userId(), request.concertId(), rank);
         return new QueueEntryResponse(request.concertId(), rank, "WAITING");
     }
 
@@ -66,16 +70,22 @@ public class QueueService {
             // Redis에 기록된 정확한 만료 시점으로 토큰 발급 (재발급 시에도 만료 시각 고정)
             Date expiryDate = new Date(expireTimestamp.longValue() * 1000);
             String accessToken = jwtProvider.generateToken(userId, expiryDate);
+
+            // 토큰이 발급되는 활성화 시점은 중요하므로 INFO 레벨 유지
+            log.info("[Queue] Get Status | Token Issued - Active (userId: {}, concertId: {})", userId, concertId);
             return new QueueStatusResponse(concertId, 0L, "ACTIVE", accessToken);
         }
 
         // 대기열 상태 확인
         Long rank = queueRedisRepository.getWaitingRank(concertIdStr, userIdStr);
         if (rank != null) {
+            // 폴링 응답은 DEBUG 레벨 유지
+            log.debug("[Queue] Get Status | Polling - Waiting (userId: {}, concertId: {}, rank: {})", userId, concertId, rank);
             return new QueueStatusResponse(concertId, rank, "WAITING", null);
         }
 
-        // 5분이 지나 만료 또는 튕긴 상태
+        // 튕기거나 만료된 비정상 상태는 INFO 레벨로 추적
+        log.info("[Queue] Get Status | Fail - Invalid/Expired (userId: {}, concertId: {})", userId, concertId);
         return new QueueStatusResponse(concertId, -1L, "INVALID", null);
     }
 }
