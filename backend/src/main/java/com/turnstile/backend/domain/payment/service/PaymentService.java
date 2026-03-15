@@ -55,11 +55,12 @@ public class PaymentService {
         if (totalAmount != request.amount()) {
             throw new TurnstileException(ErrorCode.PAYMENT_AMOUNT_MISMATCH, "실제 금액: " + totalAmount + ", 요청 금액: " + request.amount());
         }
+        log.info("[Payment] Validation | Success - Amount Match (groupId: {}, totalAmount: {})", request.groupId(), totalAmount);
 
         // PENDING 조건절(CAS)을 활용한 멱등성 확보 및 이중 결제 방어
         int updatedReservationCount = reservationRepository.confirmReservations(request.groupId());
         if (updatedReservationCount == 0) {
-            log.warn("중복 결제 방어 작동 - groupId: {}", request.groupId());
+            log.warn("[Payment] Validation | Fail - Already Paid or Expired (groupId: {})", request.groupId());
             throw new TurnstileException(ErrorCode.ALREADY_PAID, "요청 그룹 ID: " + request.groupId());
         }
 
@@ -79,6 +80,8 @@ public class PaymentService {
 
         // 캐시 무효화
         cacheEvictor.evictSeatCache(scheduleId);
+
+        log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", request.userId(), payment.getId(), totalAmount);
 
         return new PaymentResponse(
                 payment.getId(),
