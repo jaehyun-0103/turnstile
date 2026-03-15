@@ -7,6 +7,8 @@ import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -31,10 +33,10 @@ public class QueueService {
 
         // 오픈 시간 검증 및 인프라 보호
         Concert concert = concertRepository.findById(request.concertId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 콘서트입니다."));
+                .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND, "요청 콘서트 ID: " + request.concertId()));
 
         if (LocalDateTime.now().isBefore(concert.getTicketingStartAt())) {
-            throw new IllegalStateException("아직 예매가 오픈되지 않았습니다.");
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "아직 예매가 오픈되지 않았습니다. (오픈 일시: " + concert.getTicketingStartAt() + ")");
         }
 
         Long result = queueRedisRepository.enterQueue(concertIdStr, userIdStr);
