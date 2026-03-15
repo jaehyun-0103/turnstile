@@ -11,6 +11,8 @@ import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,7 +38,7 @@ public class PaymentService {
         // 예약 정보 조회
         List<Reservation> reservations = reservationRepository.findAllByGroupId(request.groupId());
         if (reservations.isEmpty()) {
-            throw new IllegalArgumentException("존재하지 않는 예약 건입니다.");
+            throw new TurnstileException(ErrorCode.RESERVATION_NOT_FOUND, "요청 그룹 ID: " + request.groupId());
         }
 
         // Lazy Loading 에러를 막기 위해 필요한 ID 값 미리 추출
@@ -45,20 +47,20 @@ public class PaymentService {
 
         // Redis 2차 인가 검증
         if (!queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(request.userId()))) {
-            throw new IllegalStateException("결제 권한(대기열)이 만료되었습니다. 다시 대기열을 거쳐주세요.");
+            throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "요청 유저 ID: " + request.userId());
         }
 
         // 결제 금액 위변조 검증
         long totalAmount = reservations.stream().mapToLong(Reservation::getPrice).sum();
         if (totalAmount != request.amount()) {
-            throw new IllegalArgumentException("요청된 결제 금액이 실제 예약 금액과 일치하지 않습니다.");
+            throw new TurnstileException(ErrorCode.PAYMENT_AMOUNT_MISMATCH, "실제 금액: " + totalAmount + ", 요청 금액: " + request.amount());
         }
 
         // PENDING 조건절(CAS)을 활용한 멱등성 확보 및 이중 결제 방어
         int updatedReservationCount = reservationRepository.confirmReservations(request.groupId());
         if (updatedReservationCount == 0) {
             log.warn("중복 결제 방어 작동 - groupId: {}", request.groupId());
-            throw new IllegalStateException("이미 결제가 완료되었거나 만료된 예약입니다.");
+            throw new TurnstileException(ErrorCode.ALREADY_PAID, "요청 그룹 ID: " + request.groupId());
         }
 
         // 유저 잔액 원자적 차감 (이때 Persistence Context가 1차로 비워짐)
