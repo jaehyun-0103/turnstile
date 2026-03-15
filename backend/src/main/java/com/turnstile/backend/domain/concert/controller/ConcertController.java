@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 콘서트, 회차, 좌석 정보 조회를 담당하는 컨트롤러입니다.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1")
@@ -22,14 +25,18 @@ public class ConcertController {
 
     private final ConcertService concertService;
 
-    // 전체 콘서트 목록 조회 API
+    /**
+     * 예매 가능한 전체 콘서트 목록을 조회합니다.
+     */
     @GetMapping("/concerts")
     public ResponseEntity<List<ConcertResponse>> getConcerts() {
         log.info("[Concert] API Request | Get Concerts");
         return ResponseEntity.ok(concertService.getConcerts());
     }
 
-    // 특정 콘서트의 회차 목록 조회 API
+    /**
+     * 특정 콘서트의 상세 일정(회차) 목록을 조회합니다.
+     */
     @GetMapping("/concerts/{concertId}/schedules")
     public ResponseEntity<List<ConcertScheduleResponse>> getSchedules(
             @PathVariable("concertId") Long concertId) {
@@ -37,7 +44,9 @@ public class ConcertController {
         return ResponseEntity.ok(concertService.getSchedules(concertId));
     }
 
-    // 특정 회차의 전체 좌석 조회 API (AuthInterceptor 통과 대상)
+    /**
+     * 특정 회차의 전체 좌석 상태 목록을 조회합니다.
+     */
     @GetMapping("/schedules/{scheduleId}/seats")
     public ResponseEntity<SeatListResponse> getSeats(
             @PathVariable("scheduleId") Long scheduleId) {
