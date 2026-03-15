@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 주기적으로 만료된 임시 점유 좌석을 회수하고, 관련 예약을 취소 처리하는 스케줄러입니다.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,6 +24,9 @@ public class SeatHoldScheduler {
     private final ReservationRepository reservationRepository;
     private final CacheEvictor cacheEvictor;
 
+    /**
+     * 점유 시간이 만료된 좌석과 예약 데이터를 정리하고, 변경된 스케줄의 좌석 캐시를 무효화합니다.
+     */
     @Transactional
     @Scheduled(fixedDelay = 60000) // 1분 주기 실행
     public void recoverExpiredSeats() {
@@ -44,7 +50,6 @@ public class SeatHoldScheduler {
             cacheEvictor.evictSeatCache(scheduleId);
         }
 
-        log.info("⏳ 만료된 좌석 회수 완료 - 해제된 좌석: {}건, 취소된 예약: {}건, 갱신된 캐시 구역: {}건",
-                releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
+        log.info("[Reservation] Scheduler Cleanup | Executed (releasedSeats: {}, expiredReservations: {}, evictedCaches: {})", releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
     }
 }
