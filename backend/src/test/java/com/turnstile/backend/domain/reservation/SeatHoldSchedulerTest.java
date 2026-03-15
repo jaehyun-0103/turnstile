@@ -91,7 +91,7 @@ class SeatHoldSchedulerTest {
         assertThat(recoveredSeat.getHoldExpiresAt()).isNull();
 
         // then: PENDING이던 예약 상태가 EXPIRED로 동기화되었는지 검증
-        List<Reservation> reservations = reservationRepository.findAllByGroupId(testGroupId);
+        List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(testGroupId);
         assertThat(reservations).hasSize(1);
         assertThat(reservations.get(0).getStatus()).isEqualTo(ReservationStatus.EXPIRED);
     }

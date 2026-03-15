@@ -11,6 +11,8 @@ import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 예약된 좌석에 대한 최종 결제 처리를 담당하는 서비스입니다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,46 +33,38 @@ public class PaymentService {
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final PaymentRepository paymentRepository;
-    private final QueueRedisRepository queueRedisRepository;
     private final CacheEvictor cacheEvictor;
 
+    /**
+     * 임시 예약된 좌석들의 결제를 진행하고, 유저 잔액 차감 및 좌석 상태를 확정합니다.
+     */
     @Transactional
     public PaymentResponse processPayment(PaymentRequest request) {
-        // 예약 정보 조회
-        List<Reservation> reservations = reservationRepository.findAllByGroupId(request.groupId());
+        // 예약 정보 존재 여부 확인
+        List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(request.groupId());
         if (reservations.isEmpty()) {
-            throw new IllegalArgumentException("존재하지 않는 예약 건입니다.");
+            throw new TurnstileException(ErrorCode.RESERVATION_NOT_FOUND, "요청 그룹 ID: " + request.groupId());
         }
 
-        // Lazy Loading 에러를 막기 위해 필요한 ID 값 미리 추출
-        Long concertId = reservations.get(0).getSeat().getSchedule().getConcert().getId();
-        Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
-
-        // Redis 2차 인가 검증
-        if (!queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(request.userId()))) {
-            throw new IllegalStateException("결제 권한(대기열)이 만료되었습니다. 다시 대기열을 거쳐주세요.");
-        }
-
-        // 결제 금액 위변조 검증
+        // 결제 금액 위변조 여부 검증
         long totalAmount = reservations.stream().mapToLong(Reservation::getPrice).sum();
         if (totalAmount != request.amount()) {
-            throw new IllegalArgumentException("요청된 결제 금액이 실제 예약 금액과 일치하지 않습니다.");
+            throw new TurnstileException(ErrorCode.PAYMENT_AMOUNT_MISMATCH, "실제 금액: " + totalAmount + ", 요청 금액: " + request.amount());
         }
+        log.info("[Payment] Validation | Success - Amount Match (groupId: {}, totalAmount: {})", request.groupId(), totalAmount);
 
-        // PENDING 조건절(CAS)을 활용한 멱등성 확보 및 이중 결제 방어
+        // PENDING 상태 확인 및 PAID 전이 (멱등성 보장 및 중복 결제 차단)
         int updatedReservationCount = reservationRepository.confirmReservations(request.groupId());
         if (updatedReservationCount == 0) {
-            log.warn("중복 결제 방어 작동 - groupId: {}", request.groupId());
-            throw new IllegalStateException("이미 결제가 완료되었거나 만료된 예약입니다.");
+            log.warn("[Payment] Validation | Fail - Already Paid or Expired (groupId: {})", request.groupId());
+            throw new TurnstileException(ErrorCode.ALREADY_PAID, "요청 그룹 ID: " + request.groupId());
         }
 
-        // 유저 잔액 원자적 차감 (이때 Persistence Context가 1차로 비워짐)
+        // 유저 잔액 차감 및 좌석 상태 확정 (HOLD -> SOLD)
         Long remainingBalance = userService.deductBalance(request.userId(), totalAmount);
-
-        // 데이터 상태 확정 (이때 Persistence Context가 2, 3차로 비워짐)
         seatRepository.confirmSeats(request.groupId());
 
-        // 결제 이력 생성
+        // 결제 이력 생성 및 영속화
         Payment payment = paymentRepository.save(Payment.builder()
                 .groupId(request.groupId())
                 .amount(totalAmount)
@@ -76,7 +73,10 @@ public class PaymentService {
                 .build());
 
         // 캐시 무효화
+        Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
         cacheEvictor.evictSeatCache(scheduleId);
+
+        log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", request.userId(), payment.getId(), totalAmount);
 
         return new PaymentResponse(
                 payment.getId(),
