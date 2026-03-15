@@ -13,6 +13,8 @@ import com.turnstile.backend.domain.reservation.repository.ReservationRepository
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,14 +40,12 @@ public class ReservationService {
         String concertIdStr = String.valueOf(request.concertId());
         String userIdStr = String.valueOf(request.userId());
 
-        // 2차 인가 검증: Redis 화이트리스트 생존 여부 확인
         if (!queueRedisRepository.isActiveUser(concertIdStr, userIdStr)) {
-            throw new IllegalStateException("예매 권한이 없거나 만료되었습니다. 대기열을 다시 거쳐주세요.");
+            throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "예매 권한이 없거나 만료되었습니다. (userId: " + request.userId() + ")");
         }
 
-        // 연석 제한 검증
         if (request.seatIds().size() > 4) {
-            throw new IllegalArgumentException("최대 4석까지만 예매 가능합니다.");
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "최대 4석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
         }
 
         // seatIds 오름차순 정렬 (데드락 예방)
@@ -61,7 +61,7 @@ public class ReservationService {
 
             if (updatedRowCount == 0) {
                 log.warn("좌석 선점 실패 (이미 점유됨) - userId: {}, seatId: {}", request.userId(), seatId);
-                throw new IllegalStateException("이미 선점된 좌석이 포함되어 있습니다. 다시 시도해주세요.");
+                throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD, "요청 좌석 ID: " + seatId);
             }
         }
 
