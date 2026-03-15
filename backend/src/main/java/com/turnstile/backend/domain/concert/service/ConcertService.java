@@ -7,6 +7,8 @@ import com.turnstile.backend.domain.concert.dto.SeatResponse;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,8 @@ public class ConcertService {
     // 콘서트 ID를 키로 사용하여 회차 목록 캐싱
     @Cacheable(cacheNames = "schedules:cache", key = "#concertId")
     public List<ConcertScheduleResponse> getSchedules(Long concertId) {
+        concertRepository.findById(concertId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND));
         return concertScheduleRepository.findAllByConcertId(concertId).stream()
                 .map(ConcertScheduleResponse::from)
                 .toList();
@@ -42,6 +46,9 @@ public class ConcertService {
     // sync=true 옵션으로 캐시 스탬피드 방어 (동시 요청 시 단일 스레드만 DB 접근 허용)
     @Cacheable(cacheNames = "seats:cache", key = "#scheduleId", sync = true)
     public SeatListResponse getSeats(Long scheduleId) {
+        concertScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.SCHEDULE_NOT_FOUND));
+
         List<SeatResponse> seats = seatRepository.findAllByScheduleId(scheduleId).stream()
                 .map(SeatResponse::from)
                 .toList();
