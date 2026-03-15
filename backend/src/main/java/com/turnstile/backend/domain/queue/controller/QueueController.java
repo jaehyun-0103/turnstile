@@ -9,6 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 콘서트 예매를 위한 대기열 진입 및 상태 폴링 요청을 처리하는 컨트롤러입니다.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/queue")
@@ -17,7 +20,9 @@ public class QueueController {
 
     private final QueueService queueService;
 
-    // 대기열 진입 API
+    /**
+     * 사용자를 특정 콘서트의 대기열에 진입시킵니다.
+     */
     @PostMapping("/entry")
     public ResponseEntity<QueueEntryResponse> enterQueue(@RequestBody QueueEntryRequest request) {
         log.info("[Queue] API Request | Enter Queue (userId: {}, concertId: {})", request.userId(), request.concertId());
@@ -25,7 +30,9 @@ public class QueueController {
         return ResponseEntity.ok(response);
     }
 
-    // 대기열 상태 조회 API
+    /**
+     * 사용자의 현재 대기열 순위 또는 입장 가능 상태를 조회합니다.
+     */
     @GetMapping("/status")
     public ResponseEntity<QueueStatusResponse> getQueueStatus(
             @RequestParam Long concertId,
