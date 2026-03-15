@@ -60,7 +60,7 @@ public class ReservationService {
             int updatedRowCount = seatRepository.holdSeatConditionally(seatId, request.userId(), expiresAt);
 
             if (updatedRowCount == 0) {
-                log.warn("좌석 선점 실패 (이미 점유됨) - userId: {}, seatId: {}", request.userId(), seatId);
+                log.warn("[Reservation] Reserve Seats | Fail - Seat Already Held (userId: {}, seatId: {})", request.userId(), seatId);
                 throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD, "요청 좌석 ID: " + seatId);
             }
         }
@@ -94,6 +94,8 @@ public class ReservationService {
         // 결제용 JWT 발급 (5분 30초 TTL)
         String paymentToken = jwtProvider.generateToken(request.userId(), paymentExpiryDate);
 
+        log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", request.userId(), groupId, sortedSeatIds.size());
+
         return new ReservationResponse(
                 groupId,
                 ReservationStatus.PENDING.name(),
@@ -104,7 +106,7 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<MyReservationResponse> getMyReservations(Long userId) {
-        return reservationRepository.findAllByUserIdWithDetails(userId).stream()
+        List<MyReservationResponse> responses = reservationRepository.findAllByUserIdWithDetails(userId).stream()
                 .map(r -> new MyReservationResponse(
                         r.getId(),
                         r.getGroupId(),
@@ -116,5 +118,8 @@ public class ReservationService {
                         r.getReservedAt()
                 ))
                 .toList();
+
+        log.info("[Reservation] Get My Reservations | Success (userId: {}, count: {})", userId, responses.size());
+        return responses;
     }
 }

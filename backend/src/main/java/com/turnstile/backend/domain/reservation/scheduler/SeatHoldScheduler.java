@@ -44,7 +44,6 @@ public class SeatHoldScheduler {
             cacheEvictor.evictSeatCache(scheduleId);
         }
 
-        log.info("⏳ 만료된 좌석 회수 완료 - 해제된 좌석: {}건, 취소된 예약: {}건, 갱신된 캐시 구역: {}건",
-                releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
+        log.info("[Reservation] Scheduler Cleanup | Executed (releasedSeats: {}, expiredReservations: {}, evictedCaches: {})", releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
     }
 }
