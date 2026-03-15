@@ -15,7 +15,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.Date;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
@@ -43,7 +46,7 @@ class QueueServicePollingTest {
     @DisplayName("폴링: 진입 완료 상태면 토큰, 대기 상태면 남은 순번 반환")
     void getQueueStatusTest() {
         // given
-        given(jwtProvider.generateToken(anyLong())).willReturn("mock-access-token");
+        given(jwtProvider.generateToken(anyLong(), any(Date.class))).willReturn("mock-access-token");
 
         // given: 대기 상태 유저 2명 세팅
         redisTemplate.opsForZSet().add(WAITING_QUEUE_KEY, "10", 1);
