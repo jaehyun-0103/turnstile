@@ -10,12 +10,14 @@ import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,6 +30,8 @@ public class ConcertService {
     // 파라미터가 없으므로 고정 키('all')를 사용하여 전체 콘서트 목록 캐싱
     @Cacheable(cacheNames = "concerts:cache", key = "'all'")
     public List<ConcertResponse> getConcerts() {
+        log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_all_concerts)");
+
         return concertRepository.findAll().stream()
                 .map(ConcertResponse::from)
                 .toList();
@@ -38,6 +42,9 @@ public class ConcertService {
     public List<ConcertScheduleResponse> getSchedules(Long concertId) {
         concertRepository.findById(concertId)
                 .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND));
+
+        log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_schedules, concertId: {})", concertId);
+
         return concertScheduleRepository.findAllByConcertId(concertId).stream()
                 .map(ConcertScheduleResponse::from)
                 .toList();
@@ -48,6 +55,8 @@ public class ConcertService {
     public SeatListResponse getSeats(Long scheduleId) {
         concertScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new TurnstileException(ErrorCode.SCHEDULE_NOT_FOUND));
+
+        log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_seats, scheduleId: {})", scheduleId);
 
         List<SeatResponse> seats = seatRepository.findAllByScheduleId(scheduleId).stream()
                 .map(SeatResponse::from)
