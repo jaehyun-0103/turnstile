@@ -11,6 +11,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 대기열의 입장 처리 및 만료된 유저 정리를 주기적으로 수행하는 스케줄러입니다.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,32 +24,37 @@ public class QueueScheduler {
     @Value("${queue.admission.batch-size:100}")
     private long admissionBatchSize;
 
+    @Value("${queue.admission.expiration-time:300}")
+    private long expirationTime;
+
+    /**
+     * 주기적으로 대기열을 순회하며 빈자리가 있을 경우 대기자를 활성 상태로 전이시킵니다.
+     */
     @Scheduled(fixedDelay = 1000) // 1초마다 실행
     public void scheduleAdmission() {
-        // 활성화된 콘서트 목록 조회
         Set<String> activeConcerts = queueRedisRepository.getActiveConcerts();
         if (activeConcerts == null || activeConcerts.isEmpty()) {
             return;
         }
 
         long now = Instant.now().getEpochSecond();
-        long expireScore = now + 300; // 진입 가능 상태 수명 5분
+        long expireScore = now + expirationTime;
 
         for (String concertIdStr : activeConcerts) {
-            // 동적 허용 인원 설정값 조회 (기본값: 100)
             long maxCapacity = queueRedisRepository.getMaxActiveConfig(concertIdStr);
 
-            // Lua 스크립트 실행을 통한 원자적 대기열 상태 전이
             List<String> enteredUsers = queueRedisRepository.transitionQueue(
                     concertIdStr, maxCapacity, admissionBatchSize, expireScore);
 
             if (enteredUsers != null && !enteredUsers.isEmpty()) {
-                log.info("콘서트 {} 입장 처리 완료: {}명", concertIdStr, enteredUsers.size());
+                log.info("[Queue] Scheduler Transition | Success (concertId: {}, enteredCount: {})", concertIdStr, enteredUsers.size());
             }
         }
     }
 
-    // 만료자 정리
+    /**
+     * 주기적으로 활성 상태 유저 중 점유 시간이 만료된 유저를 정리합니다.
+     */
     @Scheduled(fixedRate = 10000) // 10초마다 실행
     public void scheduleCleanup() {
         Set<String> activeConcerts = queueRedisRepository.getActiveConcerts();
@@ -59,6 +67,7 @@ public class QueueScheduler {
         for (String concertIdStr : activeConcerts) {
             // 10초마다 만료된 진입 완료 유저 데이터 일괄 삭제
             queueRedisRepository.removeExpiredActiveUsers(concertIdStr, now);
+            log.debug("[Queue] Scheduler Cleanup | Executed (concertId: {})", concertIdStr);
         }
     }
 }
