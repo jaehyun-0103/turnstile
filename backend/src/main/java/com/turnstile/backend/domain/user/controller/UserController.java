@@ -5,9 +5,11 @@ import com.turnstile.backend.domain.user.dto.UserBalanceResponse;
 import com.turnstile.backend.domain.user.dto.UserChargeRequest;
 import com.turnstile.backend.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class UserController {
     // 내 잔액 조회
     @GetMapping("/me/balance")
     public ResponseEntity<UserBalanceResponse> getMyBalance(@LoginUser Long userId) {
+        log.info("[User] API Request | Get Balance (userId: {})", userId);
         Long balance = userService.getBalance(userId);
         return ResponseEntity.ok(new UserBalanceResponse(userId, balance));
     }
@@ -28,6 +31,7 @@ public class UserController {
             @PathVariable("userId") Long userId,
             @RequestBody UserChargeRequest request) {
 
+        log.info("[User] API Request | Charge Balance (userId: {}, amount: {})", userId, request.amount());
         Long updatedBalance = userService.chargeBalance(userId, request.amount());
         return ResponseEntity.ok(new UserBalanceResponse(userId, updatedBalance));
     }

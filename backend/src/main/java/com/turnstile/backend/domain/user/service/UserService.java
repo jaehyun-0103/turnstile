@@ -4,9 +4,11 @@ import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -20,6 +22,8 @@ public class UserService {
             throw new TurnstileException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        log.info("[User] Deduct Balance | Success (userId: {}, amount: {})", userId, amount);
+
         return userRepository.findById(userId)
                 .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND))
                 .getBalance();
@@ -27,9 +31,12 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Long getBalance(Long userId) {
-        return userRepository.findById(userId)
+        Long balance = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."))
                 .getBalance();
+
+        log.info("[User] Get Balance | Success (userId: {})", userId);
+        return balance;
     }
 
     @Transactional
@@ -42,6 +49,8 @@ public class UserService {
         if (updatedCount == 0) {
             throw new TurnstileException(ErrorCode.USER_NOT_FOUND);
         }
+
+        log.info("[User] Charge Balance | Success (userId: {}, amount: {})", userId, amount);
 
         // clearAutomatically = true 옵션으로 영속성 컨텍스트가 비워졌으므로 DB에서 최신 상태 조회
         return userRepository.findById(userId)
