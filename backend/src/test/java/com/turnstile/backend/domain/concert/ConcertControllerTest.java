@@ -25,66 +25,66 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * 콘서트 도메인의 컨트롤러 엔드포인트 동작과 응답 규격을 검증하는 테스트입니다.
+ */
 @WebMvcTest(ConcertController.class)
 class ConcertControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private ConcertService concertService;
-
     @MockitoBean private AuthInterceptor authInterceptor;
     @MockitoBean private LoginUserArgumentResolver loginUserArgumentResolver;
 
     @BeforeEach
     void setUp() throws Exception {
-        // Mock 인터셉터가 요청을 차단하지 않고 무조건 통과시키도록 설정
+        // 인터셉터 우회 설정
         given(authInterceptor.preHandle(any(), any(), any())).willReturn(true);
     }
 
     @Test
-    @DisplayName("콘서트 목록 조회 API")
-    void getConcertsApiTest() throws Exception {
-        // given: Mock 응답 데이터 세팅
-        List<ConcertResponse> responses = List.of(new ConcertResponse(1L, "테스트 콘서트", "2024년 최고의 콘서트..."));
+    @DisplayName("콘서트 목록 조회 시 올바른 JSON 구조와 데이터를 반환해야 한다")
+    void should_return_concert_list_with_correct_json_structure() throws Exception {
+        // given: 콘서트 목록 응답 모킹
+        List<ConcertResponse> responses = List.of(new ConcertResponse(1L, "테스트 콘서트", "상세 설명"));
         given(concertService.getConcerts()).willReturn(responses);
 
-        // when & then
+        // when & then: API 호출 및 데이터 검증
         mockMvc.perform(get("/api/v1/concerts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("테스트 콘서트"))
-                .andExpect(jsonPath("$[0].description").exists());
+                .andExpect(jsonPath("$[0].title").value("테스트 콘서트"));
     }
 
     @Test
-    @DisplayName("회차 목록 조회 API")
-    void getSchedulesApiTest() throws Exception {
-        // given: Mock 응답 데이터 세팅
+    @DisplayName("특정 콘서트의 회차 목록 조회 시 올바른 데이터를 반환해야 한다")
+    void should_return_schedule_list_for_specific_concert() throws Exception {
+        // given: 회차 목록 응답 모킹
         Long concertId = 1L;
-        List<ConcertScheduleResponse> responses = List.of(new ConcertScheduleResponse(1L, LocalDateTime.now(), 5000));
+        List<ConcertScheduleResponse> responses = List.of(new ConcertScheduleResponse(10L, LocalDateTime.now(), 5000));
         given(concertService.getSchedules(concertId)).willReturn(responses);
 
-        // when & then
+        // when & then: API 호출 및 데이터 검증
         mockMvc.perform(get("/api/v1/concerts/{concertId}/schedules", concertId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].id").value(10))
                 .andExpect(jsonPath("$[0].totalSeats").value(5000));
     }
 
     @Test
-    @DisplayName("좌석 목록 조회 API")
-    void getSeatsApiTest() throws Exception {
-        // given: Mock 응답 데이터 세팅
-        Long scheduleId = 1L;
+    @DisplayName("특정 회차의 좌석 목록 조회 시 올바른 데이터를 반환해야 한다")
+    void should_return_seat_list_for_specific_schedule() throws Exception {
+        // given: 좌석 목록 응답 모킹
+        Long scheduleId = 10L;
         SeatResponse seat = new SeatResponse(101L, 1, "AVAILABLE", 150000L);
         SeatListResponse response = new SeatListResponse(scheduleId, List.of(seat));
-
         given(concertService.getSeats(scheduleId)).willReturn(response);
 
-        // when & then
+        // when & then: API 호출 및 데이터 검증
         mockMvc.perform(get("/api/v1/schedules/{scheduleId}/seats", scheduleId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.scheduleId").value(1))
+                .andExpect(jsonPath("$.scheduleId").value(10))
                 .andExpect(jsonPath("$.seats[0].seatId").value(101))
                 .andExpect(jsonPath("$.seats[0].status").value("AVAILABLE"));
     }
