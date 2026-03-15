@@ -26,4 +26,3 @@ spring:
 
 jwt:
   secret: "turnstile-ticketing-system-secret-key"
-  expiration-time: 330000

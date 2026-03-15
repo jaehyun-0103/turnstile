@@ -9,12 +9,14 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+/**
+ * 컨트롤러 메서드 파라미터에 현재 로그인한 사용자 식별자를 주입하는 리졸버입니다.
+ */
 @Component
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        // 현재 파라미터를 Resolver가 처리할지 여부를 결정
         boolean hasLoginUserAnnotation = parameter.hasParameterAnnotation(LoginUser.class);
         boolean isLongType = Long.class.isAssignableFrom(parameter.getParameterType());
         return hasLoginUserAnnotation && isLongType;
@@ -23,8 +25,9 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-        // 실제로 파라미터에 전달할 값을 생성
         HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
+
+        // 인터셉터에서 검증 후 저장한 사용자 식별자를 반환함
         return request.getAttribute("userId"); // Interceptor에서 request에 저장한 userId 반환
     }
 }
