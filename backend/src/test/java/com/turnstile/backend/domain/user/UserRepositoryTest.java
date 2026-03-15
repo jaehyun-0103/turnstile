@@ -11,28 +11,30 @@ import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * 유저 엔티티의 JPA 영속성 및 Auditing 동작을 검증하는 데이터 계층 테스트입니다.
+ */
 @DataJpaTest
 @Import(JpaConfig.class)
-class UserPersistenceTest {
+class UserRepositoryTest {
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository userRepository;
 
     @Test
-    @DisplayName("유저 저장 시 생성일 및 수정일 자동 기록")
-    void checkAuditing() {
-        // given: 유저 생성
+    @DisplayName("새로운 유저 저장 시 생성일 및 수정일이 자동으로 기록되어야 한다")
+    void should_auto_populate_auditing_fields_on_save() {
+        // given: 영속화되지 않은 유저 객체 생성
         User user = User.builder()
                 .username("test_username")
                 .name("test_name")
                 .balance(0L)
                 .build();
 
-        // when: DB 저장
+        // when: DB 저장 (영속성 컨텍스트 반영)
         User savedUser = userRepository.save(user);
 
-        // then: 검증
-        assertThat(savedUser.getCreatedAt()).isNotNull(); // 생성일이 자동으로 저장되었는지 확인
-        assertThat(savedUser.getUpdatedAt()).isNotNull(); // 수정일이 자동으로 저장되었는지 확인
+        // then: JPA Auditing에 의해 시간 필드가 채워졌는지 검증
+        assertThat(savedUser.getCreatedAt()).isNotNull();
+        assertThat(savedUser.getUpdatedAt()).isNotNull();
     }
 }

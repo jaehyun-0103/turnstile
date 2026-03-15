@@ -46,7 +46,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public Long getBalance(Long userId) {
         Long balance = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."))
+                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND, "요청 유저 ID: " + userId))
                 .getBalance();
 
         log.info("[User] Get Balance | Success (userId: {})", userId);

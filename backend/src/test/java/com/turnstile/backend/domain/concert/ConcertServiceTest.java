@@ -25,17 +25,10 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 class ConcertServiceTest {
 
-    @Mock
-    private ConcertRepository concertRepository;
+    @Mock private ConcertRepository concertRepository;
+    @Mock private ConcertScheduleRepository concertScheduleRepository;
 
-    @Mock
-    private ConcertScheduleRepository concertScheduleRepository;
-
-    @Mock
-    private SeatRepository seatRepository;
-
-    @InjectMocks
-    private ConcertService concertService;
+    @InjectMocks private ConcertService concertService;
 
     @Test
     @DisplayName("존재하지 않는 콘서트 회차 조회 시 CONCERT_NOT_FOUND 예외가 발생해야 한다")
