@@ -8,13 +8,15 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 좌석 엔티티의 데이터 접근 및 상태 변경을 처리하는 리포지토리입니다.
+ */
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
     // scheduleId 필드로 Seat 조회
     List<Seat> findAllByScheduleId(Long scheduleId);
 
-    // 1. CAS 기반 상태 업데이트 (좌석 점유)
-    // 리턴값이 1이면 점유 성공, 0이면 실패
+    // 낙관적 락(CAS)을 활용하여 동시성 환경에서 안전하게 좌석을 임시 점유(HOLD)함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Seat s " +
             "SET s.status = 'HOLD', s.holdUserId = :userId, s.holdExpiresAt = :expiresAt " +
@@ -23,7 +25,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
                               @Param("userId") Long userId,
                               @Param("expiresAt") LocalDateTime expiresAt);
 
-    // 2. TTL 기반 만료 좌석 일괄 회수 (스케줄러)
+    // TTL이 만료된 임시 점유 좌석들을 스케줄러를 통해 일괄적으로 예매 가능 상태로 회수함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Seat s " +
             "SET s.status = 'AVAILABLE', s.holdUserId = null, s.holdExpiresAt = null " +
@@ -31,11 +33,11 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     int releaseExpiredSeats(@Param("now") LocalDateTime now);
 
 
-    // 3. 만료 좌석이 존재하는 스케줄 ID 식별 (캐시 무효화)
+    // 좌석 상태 변경에 따른 캐시 무효화를 위해 만료된 좌석이 포함된 회차 식별자를 조회함
     @Query("SELECT DISTINCT s.schedule.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
     List<Long> findScheduleIdsByExpiredSeats(@Param("now") LocalDateTime now);
 
-    // 4. 최종 결제 완료에 따른 좌석 상태 확정 (HOLD -> SOLD)
+    // 결제 완료 이벤트 발생 시 예약 그룹에 속한 좌석들을 최종 판매 완료(SOLD) 상태로 확정함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Seat s SET s.status = 'SOLD' " +
             "WHERE s.id IN (SELECT r.seat.id FROM Reservation r WHERE r.groupId = :groupId)")
