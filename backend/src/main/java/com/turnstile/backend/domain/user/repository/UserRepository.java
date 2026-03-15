@@ -8,17 +8,19 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
+/**
+ * 사용자 엔티티의 데이터 접근 및 잔액 변경을 처리하는 리포지토리입니다.
+ */
 public interface UserRepository extends JpaRepository<User, Long> {
-    // username 필드로 User 조회
+
     Optional<User> findByUsername(String username);
 
-    // 원자적 잔액 차감 (초과 차감 원천 방지)
+    // DB 락(Pessimistic Lock) 대기 시간 없이 쿼리 조건(balance >= amount)만으로 초과 차감을 방어함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.balance = u.balance - :amount " +
             "WHERE u.id = :userId AND u.balance >= :amount")
     int deductBalance(@Param("userId") Long userId, @Param("amount") Long amount);
 
-    // 원자적 잔액 충전
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.balance = u.balance + :amount WHERE u.id = :userId")
     int chargeBalance(@Param("userId") Long userId, @Param("amount") Long amount);

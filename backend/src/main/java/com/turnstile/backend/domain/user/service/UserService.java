@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사용자 정보 조회 및 잔액 차감/충전 비즈니스 로직을 담당하는 서비스입니다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -15,6 +18,12 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    /**
+     * 사용자의 잔액을 차감합니다. 잔액이 부족할 경우 예외를 발생시킵니다.
+     * @param userId 사용자 식별자
+     * @param amount 차감할 금액
+     * @return 차감 후 최신 잔액
+     */
     @Transactional
     public Long deductBalance(Long userId, Long amount) {
         int updatedCount = userRepository.deductBalance(userId, amount);
@@ -29,6 +38,11 @@ public class UserService {
                 .getBalance();
     }
 
+    /**
+     * 사용자의 현재 잔액을 조회합니다.
+     * @param userId 사용자 식별자
+     * @return 현재 잔액
+     */
     @Transactional(readOnly = true)
     public Long getBalance(Long userId) {
         Long balance = userRepository.findById(userId)
@@ -39,6 +53,12 @@ public class UserService {
         return balance;
     }
 
+    /**
+     * 사용자의 계좌에 금액을 충전합니다.
+     * @param userId 사용자 식별자
+     * @param amount 충전할 금액
+     * @return 충전 후 최신 잔액
+     */
     @Transactional
     public Long chargeBalance(Long userId, Long amount) {
         if (amount <= 0) {
