@@ -17,12 +17,16 @@ import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 콘서트 좌석 임시 점유(예약) 및 내 예약 내역 조회 비즈니스 로직을 담당하는 서비스입니다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,20 @@ public class ReservationService {
     private final CacheEvictor cacheEvictor;
     private final JwtProvider jwtProvider;
 
+    @Value("${reservation.policy.max-seats:4}")
+    private int maxSeatsPerUser;
+
+    @Value("${reservation.policy.hold-time-minutes:5}")
+    private long holdTimeMinutes;
+
+    @Value("${reservation.policy.payment-expiry-seconds:330}")
+    private long paymentExpirySeconds;
+
+    /**
+     * 사용자가 선택한 좌석들을 임시 점유하고 결제용 접근 토큰을 발급합니다.
+     * @param request 예약 요청 정보 (콘서트 ID, 좌석 ID 목록)
+     * @return 생성된 예약 그룹 ID와 점유 만료 시간, 결제 토큰
+     */
     @Transactional
     public ReservationResponse reserveSeats(ReservationRequest request) {
         String concertIdStr = String.valueOf(request.concertId());
@@ -44,18 +62,18 @@ public class ReservationService {
             throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "예매 권한이 없거나 만료되었습니다. (userId: " + request.userId() + ")");
         }
 
-        if (request.seatIds().size() > 4) {
-            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "최대 4석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
+        if (request.seatIds().size() > maxSeatsPerUser) {
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE,
+                    "최대 " + maxSeatsPerUser + "석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
         }
 
-        // seatIds 오름차순 정렬 (데드락 예방)
+        // DB 데드락(Deadlock) 예방을 위해 좌석 ID를 항상 오름차순으로 정렬하여 락을 획득함
         List<Long> sortedSeatIds = new ArrayList<>(request.seatIds());
         Collections.sort(sortedSeatIds);
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(5); // 5분 임시 점유
+        LocalDateTime expiresAt = now.plusMinutes(holdTimeMinutes);
 
-        // CAS 업데이트 및 All-or-Nothing 롤백 검증
         for (Long seatId : sortedSeatIds) {
             int updatedRowCount = seatRepository.holdSeatConditionally(seatId, request.userId(), expiresAt);
 
@@ -65,7 +83,6 @@ public class ReservationService {
             }
         }
 
-        // 예약 레코드 생성 (PENDING)
         User userRef = userRepository.getReferenceById(request.userId());
         String groupId = UUID.randomUUID().toString();
 
@@ -84,14 +101,12 @@ public class ReservationService {
         reservationRepository.saveAll(reservations);
 
         // 캐시 즉시 무효화 (팬텀 클릭 차단)
-        Long scheduleId = seats.get(0).getSchedule().getId(); // Seat 엔티티 매핑 반영
+        Long scheduleId = seats.get(0).getSchedule().getId();
         cacheEvictor.evictSeatCache(scheduleId);
 
 
-        long paymentExpiryMillis = 330 * 1000L;
+        long paymentExpiryMillis = paymentExpirySeconds * 1000L;
         Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
-
-        // 결제용 JWT 발급 (5분 30초 TTL)
         String paymentToken = jwtProvider.generateToken(request.userId(), paymentExpiryDate);
 
         log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", request.userId(), groupId, sortedSeatIds.size());
@@ -104,6 +119,9 @@ public class ReservationService {
         );
     }
 
+    /**
+     * 특정 사용자의 모든 예약 내역을 최신순으로 조회합니다.
+     */
     @Transactional(readOnly = true)
     public List<MyReservationResponse> getMyReservations(Long userId) {
         List<MyReservationResponse> responses = reservationRepository.findAllByUserIdWithDetails(userId).stream()

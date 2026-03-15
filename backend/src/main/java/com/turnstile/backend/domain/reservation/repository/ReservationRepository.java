@@ -9,26 +9,34 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 예약 엔티티의 데이터 접근 및 상태 관리를 담당하는 리포지토리입니다.
+ */
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
-    // userId 필드로 Reservation 조회
+
     List<Reservation> findAllByUserId(Long userId);
 
-    // groupId 필드로 연석 일괄 조회
     List<Reservation> findAllByGroupId(String groupId);
 
-    // 스케줄러용: 만료된 좌석을 물고 있는 PENDING 예약을 EXPIRED로 일괄 변경
+    /**
+     * 스케줄러 전용: 점유 시간이 지나 만료된 좌석을 참조하고 있는 PENDING 상태의 예약을 EXPIRED로 일괄 처리합니다.
+     */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Reservation r SET r.status = 'EXPIRED' " +
             "WHERE r.status = 'PENDING' AND r.seat.id IN " +
             "(SELECT s.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now)")
     int expirePendingReservations(@Param("now") LocalDateTime now);
 
-    // 이중 결제 방어를 위한 멱등성 보장 (PENDING 상태일 때만 PAID로 업데이트)
+    /**
+     * 이중 결제 방어: 예약이 PENDING 상태일 때만 PAID로 업데이트하여 멱등성을 보장합니다.
+     */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Reservation r SET r.status = 'PAID' WHERE r.groupId = :groupId AND r.status = 'PENDING'")
     int confirmReservations(@Param("groupId") String groupId);
 
-    // 유저 ID로 예약 내역 조회 (Fetch Join으로 성능 최적화)
+    /**
+     * N+1 문제를 방지하기 위해 Fetch Join을 사용하여 유저의 예약 내역과 관련된 좌석, 스케줄, 콘서트 정보를 한 번에 조회합니다.
+     */
     @Query("SELECT r FROM Reservation r " +
             "JOIN FETCH r.seat s " +
             "JOIN FETCH s.schedule sc " +
