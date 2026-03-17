@@ -41,6 +41,7 @@ class QueueConcurrencyTest {
     private static final Long CONCERT_ID = 1L;
     private static final String COUNTER_KEY = "q:counter:" + CONCERT_ID;
     private static final String WAITING_QUEUE_KEY = "q:waiting:" + CONCERT_ID;
+    private static final String ACTIVE_QUEUE_KEY = "q:active:" + CONCERT_ID;
     private static final String ACTIVE_CONCERTS_KEY = "q:concerts:active";
 
     @BeforeEach
@@ -86,7 +87,14 @@ class QueueConcurrencyTest {
 
         // then: 순번 발급 카운터와 ZSET 데이터 크기가 모두 1000인지 검증
         assertThat(redisTemplate.opsForValue().get(COUNTER_KEY)).isEqualTo(String.valueOf(threadCount));
-        assertThat(redisTemplate.opsForZSet().size(WAITING_QUEUE_KEY)).isEqualTo(threadCount);
+
+        // then: 백그라운드 스케줄러가 개입하여 일부 유저를 ACTIVE로 넘겼을 수 있으므로,
+        // WAITING 큐와 ACTIVE 큐의 총합이 정확히 1000명인지 검증
+        Long waitingCount = redisTemplate.opsForZSet().size(WAITING_QUEUE_KEY);
+        Long activeCount = redisTemplate.opsForZSet().size(ACTIVE_QUEUE_KEY);
+
+        long totalRegistered = (waitingCount == null ? 0 : waitingCount) + (activeCount == null ? 0 : activeCount);
+        assertThat(totalRegistered).isEqualTo(threadCount);
 
         // then: 스케줄러 트리거 집합(Set)에 해당 콘서트가 정상적으로 활성화되었는지 검증
         assertThat(redisTemplate.opsForSet().isMember(ACTIVE_CONCERTS_KEY, String.valueOf(CONCERT_ID))).isTrue();

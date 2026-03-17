@@ -34,11 +34,6 @@ class ReservationServiceTest {
     @InjectMocks private ReservationService reservationService;
 
     @Mock private QueueRedisRepository queueRedisRepository;
-    @Mock private SeatRepository seatRepository;
-    @Mock private ReservationRepository reservationRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private CacheEvictor cacheEvictor;
-    @Mock private JwtProvider jwtProvider;
 
     @BeforeEach
     void setUp() {

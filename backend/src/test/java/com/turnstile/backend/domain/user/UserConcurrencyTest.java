@@ -32,7 +32,7 @@ class UserConcurrencyTest {
     @BeforeEach
     void setUp() {
         savedUser = userRepository.save(User.builder()
-                .username("test_concurrency")
+                .username("test_concurrency" + System.nanoTime())
                 .name("test")
                 .balance(5000L) // 기본 잔액 5,000원 세팅
                 .build());
@@ -40,7 +40,7 @@ class UserConcurrencyTest {
 
     @AfterEach
     void tearDown() {
-        userRepository.deleteAllInBatch();
+        userRepository.deleteById(savedUser.getId());
     }
 
     @Test
