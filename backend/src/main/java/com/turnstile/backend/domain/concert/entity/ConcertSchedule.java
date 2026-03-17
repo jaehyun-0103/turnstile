@@ -22,7 +22,7 @@ public class ConcertSchedule extends BaseTimeEntity {
     @JoinColumn(name = "concert_id", nullable = false)
     private Concert concert;
 
-    @Column(name = "concert_date", nullable = false)
+    @Column(name = "concert_date", nullable = false, columnDefinition = "DATETIME(6)")
     private LocalDateTime concertDate;
 
     @Column(name = "total_seats", nullable = false)

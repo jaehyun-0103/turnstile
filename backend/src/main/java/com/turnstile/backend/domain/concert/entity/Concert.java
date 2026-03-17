@@ -23,6 +23,6 @@ public class Concert extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "ticketing_start_at", nullable = false)
+    @Column(name = "ticketing_start_at", nullable = false, columnDefinition = "DATETIME(6)")
     private LocalDateTime ticketingStartAt;
 }

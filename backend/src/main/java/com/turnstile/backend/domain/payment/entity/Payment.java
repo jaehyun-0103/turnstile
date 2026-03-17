@@ -27,6 +27,6 @@ public class Payment extends BaseTimeEntity {
     @Column(length = 20)
     private PaymentStatus status;
 
-    @Column(name = "paid_at")
+    @Column(name = "paid_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime paidAt;
 }

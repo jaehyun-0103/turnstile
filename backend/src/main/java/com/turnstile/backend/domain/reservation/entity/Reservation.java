@@ -37,6 +37,6 @@ public class Reservation extends BaseTimeEntity {
     @Column(nullable = false)
     private Long price;
 
-    @Column(name = "reserved_at")
+    @Column(name = "reserved_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime reservedAt;
 }
