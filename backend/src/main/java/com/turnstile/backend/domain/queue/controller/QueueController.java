@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.queue.controller;
 
+import com.turnstile.backend.domain.auth.annotation.LoginUser;
 import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
@@ -24,9 +25,11 @@ public class QueueController {
      * 사용자를 특정 콘서트의 대기열에 진입시킵니다.
      */
     @PostMapping("/entry")
-    public ResponseEntity<QueueEntryResponse> enterQueue(@RequestBody QueueEntryRequest request) {
-        log.info("[Queue] API Request | Enter Queue (userId: {}, concertId: {})", request.userId(), request.concertId());
-        QueueEntryResponse response = queueService.enterQueue(request);
+    public ResponseEntity<QueueEntryResponse> enterQueue(
+            @LoginUser Long userId,
+            @RequestBody QueueEntryRequest request) {
+        log.info("[Queue] API Request | Enter Queue (userId: {}, concertId: {})", userId, request.concertId());
+        QueueEntryResponse response = queueService.enterQueue(userId, request);
         return ResponseEntity.ok(response);
     }
 
@@ -36,7 +39,7 @@ public class QueueController {
     @GetMapping("/status")
     public ResponseEntity<QueueStatusResponse> getQueueStatus(
             @RequestParam Long concertId,
-            @RequestParam Long userId) {
+            @LoginUser Long userId) {
         // 폴링 요청이므로 디버그 레벨로 설정하여 평상시 로그 스팸을 방지함
         log.debug("[Queue] API Request | Get Queue Status (userId: {}, concertId: {})", userId, concertId);
         QueueStatusResponse status = queueService.getQueueStatus(concertId, userId);

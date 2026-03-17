@@ -53,10 +53,10 @@ class ReservationControllerTest {
     @DisplayName("좌석 예약 요청 시 그룹 ID와 결제 토큰을 포함한 규격화된 JSON을 반환해야 한다")
     void should_return_reservation_response_on_reserve_seats() throws Exception {
         // given
-        ReservationRequest request = new ReservationRequest(1L, 100L, List.of(10L, 11L));
+        ReservationRequest request = new ReservationRequest(100L, List.of(10L, 11L));
         ReservationResponse response = new ReservationResponse("group-uuid-123", "PENDING", LocalDateTime.now(), "mock-token");
 
-        given(reservationService.reserveSeats(any(ReservationRequest.class))).willReturn(response);
+        given(reservationService.reserveSeats(anyLong(), any(ReservationRequest.class))).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/reservations")

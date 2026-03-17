@@ -30,12 +30,13 @@ public class QueueService {
 
     /**
      * 사용자를 대기열에 진입시킵니다. 예매 오픈 전이거나 콘서트가 없을 경우 예외를 발생시킵니다.
+     * @param userId 대기열에 진입할 사용자 식별자
      * @param request 대기열 진입 요청 정보
      * @return 대기열 상태 및 현재 순위
      */
-    public QueueEntryResponse enterQueue(QueueEntryRequest request) {
+    public QueueEntryResponse enterQueue(Long userId, QueueEntryRequest request) {
         String concertIdStr = String.valueOf(request.concertId());
-        String userIdStr = String.valueOf(request.userId());
+        String userIdStr = String.valueOf(userId);
 
         Concert concert = concertRepository.findById(request.concertId())
                 .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND, "요청 콘서트 ID: " + request.concertId()));
@@ -46,7 +47,7 @@ public class QueueService {
 
         Long result = queueRedisRepository.enterQueue(concertIdStr, userIdStr);
         if (result == -1L) {
-            log.info("[Queue] Enter Queue | Success - Already Active (userId: {}, concertId: {})", request.userId(), request.concertId());
+            log.info("[Queue] Enter Queue | Success - Already Active (userId: {}, concertId: {})", userId, request.concertId());
             return new QueueEntryResponse(request.concertId(), 0L, "ACTIVE");
         }
 
@@ -56,7 +57,7 @@ public class QueueService {
             rank = 0L;
         }
 
-        log.info("[Queue] Enter Queue | Success - Waiting (userId: {}, concertId: {}, rank: {})", request.userId(), request.concertId(), rank);
+        log.info("[Queue] Enter Queue | Success - Waiting (userId: {}, concertId: {}, rank: {})", userId, request.concertId(), rank);
         return new QueueEntryResponse(request.concertId(), rank, "WAITING");
     }
 

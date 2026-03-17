@@ -66,10 +66,10 @@ class PaymentServiceTest {
         Payment mockPayment = Payment.builder().id(1L).status(PaymentStatus.PAID).paidAt(LocalDateTime.now()).build();
         given(paymentRepository.save(any(Payment.class))).willReturn(mockPayment);
 
-        PaymentRequest request = new PaymentRequest(1L, groupId, 150000L);
+        PaymentRequest request = new PaymentRequest(groupId, 150000L);
 
         // when
-        PaymentResponse response = paymentService.processPayment(request);
+        PaymentResponse response = paymentService.processPayment(1L, request);
 
         // then
         assertThat(response.status()).isEqualTo("PAID");
@@ -85,11 +85,11 @@ class PaymentServiceTest {
         given(mockReservation.getPrice()).willReturn(150000L);
         given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
 
-        PaymentRequest request = new PaymentRequest(1L, groupId, 100000L);
+        PaymentRequest request = new PaymentRequest(groupId, 100000L);
 
         // when & then
         TurnstileException exception = assertThrows(TurnstileException.class,
-                () -> paymentService.processPayment(request));
+                () -> paymentService.processPayment(1L, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
     }
 }

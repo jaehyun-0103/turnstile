@@ -49,12 +49,12 @@ class ReservationServiceTest {
         // given: 대기열에 없는 유저 모킹
         Long userId = 1L;
         Long concertId = 100L;
-        ReservationRequest request = new ReservationRequest(userId, concertId, List.of(10L, 11L));
+        ReservationRequest request = new ReservationRequest(concertId, List.of(10L, 11L));
 
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(false);
 
         // when & then
-        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(request));
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.QUEUE_NOT_ACTIVE);
     }
 
@@ -64,12 +64,12 @@ class ReservationServiceTest {
         // given: 인가된 유저가 5개의 좌석을 요청
         Long userId = 1L;
         Long concertId = 100L;
-        ReservationRequest request = new ReservationRequest(userId, concertId, List.of(1L, 2L, 3L, 4L, 5L));
+        ReservationRequest request = new ReservationRequest(concertId, List.of(1L, 2L, 3L, 4L, 5L));
 
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then
-        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(request));
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
     }
 }

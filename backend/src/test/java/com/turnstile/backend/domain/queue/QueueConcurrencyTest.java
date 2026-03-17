@@ -72,7 +72,7 @@ class QueueConcurrencyTest {
                 try {
                     readyLatch.countDown();
                     startLatch.await();
-                    queueService.enterQueue(new QueueEntryRequest(userId, CONCERT_ID));
+                    queueService.enterQueue(userId, new QueueEntryRequest(CONCERT_ID));
                 } catch (InterruptedException ignored) {
                 } finally {
                     doneLatch.countDown();
