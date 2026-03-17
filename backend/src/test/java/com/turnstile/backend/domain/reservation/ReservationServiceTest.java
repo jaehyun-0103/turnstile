@@ -39,7 +39,7 @@ class ReservationServiceTest {
     void setUp() {
         // @Value로 분리된 비즈니스 정책 주입
         ReflectionTestUtils.setField(reservationService, "maxSeatsPerUser", 4);
-        ReflectionTestUtils.setField(reservationService, "holdTimeMinutes", 5L);
+        ReflectionTestUtils.setField(reservationService, "holdTimeSeconds", 300L);
         ReflectionTestUtils.setField(reservationService, "paymentExpirySeconds", 330L);
     }
 

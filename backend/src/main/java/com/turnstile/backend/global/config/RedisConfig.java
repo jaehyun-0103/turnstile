@@ -85,9 +85,9 @@ public class RedisConfig {
                 .computePrefixWith(cacheName -> cacheName + ":");
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("concerts:cache", defaultConfig.entryTtl(Duration.ofHours(1)));
-        cacheConfigurations.put("schedules:cache", defaultConfig.entryTtl(Duration.ofHours(1)));
-        cacheConfigurations.put("seats:cache", defaultConfig.entryTtl(Duration.ofMinutes(1)));
+        cacheConfigurations.put("concert:info", defaultConfig.entryTtl(Duration.ofHours(1)));
+        cacheConfigurations.put("concert:schedules", defaultConfig.entryTtl(Duration.ofHours(1)));
+        cacheConfigurations.put("concert:schedule", defaultConfig.entryTtl(Duration.ofMinutes(1)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)

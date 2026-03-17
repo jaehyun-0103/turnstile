@@ -1,7 +1,7 @@
--- KEYS[1]: q:active:{concertId}
--- KEYS[2]: q:waiting:{concertId}
--- KEYS[3]: q:counter:{concertId}
--- KEYS[4]: q:concerts:active
+-- KEYS[1]: queue:concert:{concertId}:active
+-- KEYS[2]: queue:concert:{concertId}:waiting
+-- KEYS[3]: queue:concert:{concertId}:ticket_counter
+-- KEYS[4]: queue:scheduler:active_concerts
 -- ARGV[1]: User ID
 -- ARGV[2]: Concert ID
 

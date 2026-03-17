@@ -20,16 +20,16 @@ public class QueueRedisRepository {
     private final RedisScript<Long> enterQueueScript;
     private final RedisScript<List<String>> transitionQueueScript;
 
-    private static final String ACTIVE_CONCERTS_KEY = "q:concerts:active";
+    private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
 
     /**
      * Lua 스크립트를 실행하여 사용자를 대기열에 원자적으로 진입시키고 스케줄러 트리거를 활성화합니다.
      * @return 대기 순번 (이미 활성 상태인 경우 -1 반환)
      */
     public Long enterQueue(String concertIdStr, String userIdStr) {
-        String activeKey = "q:active:" + concertIdStr;
-        String waitingKey = "q:waiting:" + concertIdStr;
-        String counterKey = "q:counter:" + concertIdStr;
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
+        String waitingKey = "queue:concert:" + concertIdStr + ":waiting";
+        String counterKey = "queue:concert:" + concertIdStr + ":ticket_counter";
 
         return redisTemplate.execute(
                 enterQueueScript,
@@ -44,8 +44,8 @@ public class QueueRedisRepository {
      * @return 활성 상태로 전이된 사용자 ID 목록
      */
     public List<String> transitionQueue(String concertIdStr, long maxCapacity, long batchSize, long expireScore) {
-        String waitingKey = "q:waiting:" + concertIdStr;
-        String activeKey = "q:active:" + concertIdStr;
+        String waitingKey = "queue:concert:" + concertIdStr + ":waiting";
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
 
         return redisTemplate.execute(
                 transitionQueueScript,
@@ -60,7 +60,7 @@ public class QueueRedisRepository {
      * 대기열에 있는 특정 사용자의 현재 순위를 조회합니다.
      */
     public Long getWaitingRank(String concertIdStr, String userIdStr) {
-        String waitingKey = "q:waiting:" + concertIdStr;
+        String waitingKey = "queue:concert:" + concertIdStr + ":waiting";
         return redisTemplate.opsForZSet().rank(waitingKey, userIdStr);
     }
 
@@ -68,7 +68,7 @@ public class QueueRedisRepository {
      * 특정 사용자가 현재 활성(입장 완료) 상태인지 확인합니다.
      */
     public boolean isActiveUser(String concertIdStr, String userIdStr) {
-        String activeKey = "q:active:" + concertIdStr;
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
         return redisTemplate.opsForZSet().score(activeKey, userIdStr) != null;
     }
 
@@ -83,7 +83,7 @@ public class QueueRedisRepository {
      * 만료 시간(Score)이 지난 활성 상태 유저들을 일괄 삭제합니다.
      */
     public void removeExpiredActiveUsers(String concertIdStr, long now) {
-        String activeKey = "q:active:" + concertIdStr;
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
         redisTemplate.opsForZSet().removeRangeByScore(activeKey, 0, now);
     }
 
@@ -92,7 +92,7 @@ public class QueueRedisRepository {
      * 설정값이 없을 경우 기본값인 5000명을 반환합니다.
      */
     public long getMaxActiveConfig(String concertIdStr) {
-        String maxActiveConfigKey = "q:config:max_active:" + concertIdStr;
+        String maxActiveConfigKey = "queue:concert:" + concertIdStr + ":capacity";
         String maxActiveStr = redisTemplate.opsForValue().get(maxActiveConfigKey);
 
         return (maxActiveStr != null) ? Long.parseLong(maxActiveStr) : 5000L;
@@ -102,7 +102,7 @@ public class QueueRedisRepository {
      * 활성 상태 사용자의 만료 시간(Score)을 조회합니다.
      */
     public Double getActiveUserScore(String concertIdStr, String userIdStr) {
-        String activeKey = "q:active:" + concertIdStr;
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
         return redisTemplate.opsForZSet().score(activeKey, userIdStr);
     }
 }

@@ -16,7 +16,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
      */
     @Override
     @Cacheable(
-            cacheNames = "concerts:cache",
+            cacheNames = "concert:info",
             key = "#id",
             unless = "#result == null"
     )

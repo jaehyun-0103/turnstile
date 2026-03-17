@@ -34,7 +34,7 @@ public class ConcertService {
     /**
      * 예매 가능한 전체 콘서트 목록을 조회합니다.
      */
-    @Cacheable(cacheNames = "concerts:cache", key = "'all'")
+    @Cacheable(cacheNames = "concert:info", key = "'all'")
     public List<ConcertResponse> getConcerts() {
         log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_all_concerts)");
 
@@ -48,7 +48,7 @@ public class ConcertService {
      * @param concertId 콘서트 식별자
      * @return 해당 콘서트의 회차 목록
      */
-    @Cacheable(cacheNames = "schedules:cache", key = "#concertId")
+    @Cacheable(cacheNames = "concert:schedules", key = "#concertId")
     public List<ConcertScheduleResponse> getSchedules(Long concertId) {
         concertRepository.findById(concertId)
                 .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND));
@@ -66,7 +66,7 @@ public class ConcertService {
      * @return 해당 회차의 좌석 상태 목록
      */
     // sync=true 옵션으로 다수의 사용자가 동시에 빈 캐시에 접근할 때 발생하는 캐시 스탬피드 현상을 방어함
-    @Cacheable(cacheNames = "seats:cache", key = "#scheduleId", sync = true)
+    @Cacheable(cacheNames = "concert:schedule", key = "#scheduleId + ':seats'", sync = true)
     public SeatListResponse getSeats(Long scheduleId) {
         concertScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new TurnstileException(ErrorCode.SCHEDULE_NOT_FOUND));

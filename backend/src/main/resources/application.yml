@@ -26,3 +26,16 @@ spring:
 
 jwt:
   secret: "turnstile-ticketing-system-secret-key"
+
+# 대기열 정책 설정
+queue:
+  policy:
+    admission-batch-size: 100    # 대기열에서 활성 상태로 진입시키는 최대 유입량
+    active-ttl-seconds: 300      # 활성 상태 유저의 유효 시간
+
+# 예약 및 결제 정책 설정
+reservation:
+  policy:
+    max-seats-per-user: 4        # 유저 1명당 최대 예매 가능 좌석 수
+    hold-time-seconds: 300       # 좌석 임시 점유 유지 시간
+    payment-ttl-seconds: 330     # 결제용 JWT 토큰 만료 시간

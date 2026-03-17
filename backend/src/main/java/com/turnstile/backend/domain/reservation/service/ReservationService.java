@@ -39,13 +39,13 @@ public class ReservationService {
     private final CacheEvictor cacheEvictor;
     private final JwtProvider jwtProvider;
 
-    @Value("${reservation.policy.max-seats:4}")
+    @Value("${reservation.policy.max-seats-per-user:4}")
     private int maxSeatsPerUser;
 
-    @Value("${reservation.policy.hold-time-minutes:5}")
-    private long holdTimeMinutes;
+    @Value("${reservation.policy.hold-time-seconds:330}")
+    private long holdTimeSeconds;
 
-    @Value("${reservation.policy.payment-expiry-seconds:330}")
+    @Value("${reservation.policy.payment-ttl-seconds:330}")
     private long paymentExpirySeconds;
 
     /**
@@ -72,7 +72,7 @@ public class ReservationService {
         Collections.sort(sortedSeatIds);
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(holdTimeMinutes);
+        LocalDateTime expiresAt = now.plusMinutes(holdTimeSeconds);
 
         for (Long seatId : sortedSeatIds) {
             int updatedRowCount = seatRepository.holdSeatConditionally(seatId, request.userId(), expiresAt);

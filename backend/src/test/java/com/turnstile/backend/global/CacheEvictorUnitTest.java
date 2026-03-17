@@ -28,7 +28,7 @@ class CacheEvictorUnitTest {
     void evictSeatCacheShouldInvokeRedisDelete() {
         // given: 특정 회차 식별자가 주어짐
         Long scheduleId = 100L;
-        String expectedKey = "seats:cache:100";
+        String expectedKey = "concert:schedule:100:seats";
 
         // when: 캐시 무효화 메서드를 실행함
         cacheEvictor.evictSeatCache(scheduleId);

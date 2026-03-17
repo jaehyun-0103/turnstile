@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class CacheEvictor {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private static final String SEAT_CACHE_PREFIX = "seats:cache:";
+    private static final String SEAT_CACHE_PREFIX = "concert:schedule:";
 
     /**
      * 특정 스케줄의 좌석표 캐시를 즉시 삭제합니다.
@@ -19,6 +19,6 @@ public class CacheEvictor {
      */
     public void evictSeatCache(Long scheduleId) {
         log.info("[Global] Cache Eviction | Success (type: Seat, scheduleId: {})", scheduleId);
-        redisTemplate.delete(SEAT_CACHE_PREFIX + scheduleId);
+        redisTemplate.delete(SEAT_CACHE_PREFIX + scheduleId + ":seats");
     }
 }
