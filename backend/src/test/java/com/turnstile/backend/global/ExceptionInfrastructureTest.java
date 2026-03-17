@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 예외 처리 기반 인프라의 명세와 객체 매핑 동작을 검증하는 테스트입니다.
  */
-class ExceptionInfrastructureUnitTest {
+class ExceptionInfrastructureTest {
 
     @Test
     @DisplayName("TurnstileException은 생성 시 주입된 ErrorCode 정보를 정확히 보유한다")

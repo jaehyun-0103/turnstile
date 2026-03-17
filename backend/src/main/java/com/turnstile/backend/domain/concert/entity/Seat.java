@@ -36,6 +36,6 @@ public class Seat extends BaseTimeEntity {
     @Column(name = "hold_user_id")
     private Long holdUserId;
 
-    @Column(name = "hold_expires_at")
+    @Column(name = "hold_expires_at", columnDefinition = "DATETIME(6)")
     private LocalDateTime holdExpiresAt;
 }

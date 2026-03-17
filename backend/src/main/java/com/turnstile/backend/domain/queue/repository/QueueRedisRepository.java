@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.queue.repository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,8 +17,8 @@ import java.util.Set;
 public class QueueRedisRepository {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final DefaultRedisScript<Long> enterQueueScript;
-    private final DefaultRedisScript<List<String>> transitionQueueScript;
+    private final RedisScript<Long> enterQueueScript;
+    private final RedisScript<List<String>> transitionQueueScript;
 
     private static final String ACTIVE_CONCERTS_KEY = "q:concerts:active";
 

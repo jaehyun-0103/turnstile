@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 전역 예외 핸들러가 다양한 예외 상황에 대해 올바른 HTTP 응답을 반환하는지 검증하는 테스트입니다.
  */
-class GlobalExceptionHandlerControllerTest {
+class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;
 

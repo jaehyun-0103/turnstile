@@ -1,7 +1,7 @@
 package com.turnstile.backend.domain.user.repository;
 
 import com.turnstile.backend.domain.user.entity.User;
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
