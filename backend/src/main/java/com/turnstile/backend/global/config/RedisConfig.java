@@ -13,7 +13,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -49,19 +49,14 @@ public class RedisConfig {
      * 대기열 진입 및 상태 확인을 위한 Redis 스크립트 빈을 등록합니다.
      */
     @Bean
-    public DefaultRedisScript<Long> enterQueueScript() {
-        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("scripts/enter_queue.lua"));
-        script.setResultType(Long.class);
-        return script;
+    public RedisScript<Long> enterQueueScript() {
+        return RedisScript.of(new ClassPathResource("scripts/enter_queue.lua"), Long.class);
     }
 
     @Bean
-    public DefaultRedisScript<List> transitionQueueScript() {
-        DefaultRedisScript<List> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("scripts/transition_queue.lua"));
-        script.setResultType(List.class);
-        return script;
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public RedisScript<List<String>> transitionQueueScript() {
+        return RedisScript.of(new ClassPathResource("scripts/transition_queue.lua"), (Class<List<String>>) (Class) List.class);
     }
 
     @Bean
