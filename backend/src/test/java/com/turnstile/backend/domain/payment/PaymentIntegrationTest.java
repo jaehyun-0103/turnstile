@@ -75,10 +75,10 @@ class PaymentIntegrationTest {
     @DisplayName("결제 성공 시 유저 잔액이 차감되고 좌석은 SOLD, 예약은 PAID 상태로 정확히 전이되어야 한다")
     void should_complete_payment_flow_atomically() {
         // given: 20만원 보유 유저가 15만원 결제 요청
-        PaymentRequest request = new PaymentRequest(testUserId, testGroupId, 150000L);
+        PaymentRequest request = new PaymentRequest(testGroupId, 150000L);
 
         // when: 결제 프로세스 실행
-        PaymentResponse response = paymentService.processPayment(request);
+        PaymentResponse response = paymentService.processPayment(testUserId, request);
 
         // then: 잔액 차감 검증
         assertThat(response.balance()).isEqualTo(50000L);

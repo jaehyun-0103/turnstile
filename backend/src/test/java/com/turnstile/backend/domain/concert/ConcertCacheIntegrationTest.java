@@ -43,7 +43,7 @@ class ConcertCacheIntegrationTest {
 
     @BeforeEach
     void clearCache() {
-        cacheManager.getCache("seats:cache").clear();
+        cacheManager.getCache("concert:schedule").clear();
     }
 
     @Test
@@ -77,7 +77,7 @@ class ConcertCacheIntegrationTest {
         concertService.getSeats(scheduleId);
 
         // then: Redis 키의 유효시간이 60초 이내인지 확인
-        String cacheKey = "seats:cache:" + scheduleId;
+        String cacheKey = "concert:schedule:" + scheduleId + ":seats";
         Long expire = redisTemplate.getExpire(cacheKey, TimeUnit.SECONDS);
 
         assertThat(expire).isNotNull().isPositive().isLessThanOrEqualTo(60L);

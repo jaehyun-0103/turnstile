@@ -39,10 +39,10 @@ class QueueConcurrencyTest {
     @MockitoBean private ConcertRepository concertRepository;
 
     private static final Long CONCERT_ID = 1L;
-    private static final String COUNTER_KEY = "q:counter:" + CONCERT_ID;
-    private static final String WAITING_QUEUE_KEY = "q:waiting:" + CONCERT_ID;
-    private static final String ACTIVE_QUEUE_KEY = "q:active:" + CONCERT_ID;
-    private static final String ACTIVE_CONCERTS_KEY = "q:concerts:active";
+    private static final String COUNTER_KEY = "queue:concert:" + CONCERT_ID + ":ticket_counter";
+    private static final String WAITING_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":waiting";
+    private static final String ACTIVE_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":active";
+    private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
 
     @BeforeEach
     void setUp() {
@@ -72,7 +72,7 @@ class QueueConcurrencyTest {
                 try {
                     readyLatch.countDown();
                     startLatch.await();
-                    queueService.enterQueue(new QueueEntryRequest(userId, CONCERT_ID));
+                    queueService.enterQueue(userId, new QueueEntryRequest(CONCERT_ID));
                 } catch (InterruptedException ignored) {
                 } finally {
                     doneLatch.countDown();

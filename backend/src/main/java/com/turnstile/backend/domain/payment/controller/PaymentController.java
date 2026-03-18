@@ -32,14 +32,7 @@ public class PaymentController {
             @RequestBody PaymentRequest request) {
         log.info("[Payment] API Request | Process Payment (userId: {}, groupId: {}, requestAmount: {})", loginUserId, request.groupId(), request.amount());
 
-        // 위변조 방지를 위해 토큰 기반의 로그인 유저 ID를 강제 주입하여 요청 객체 재생성
-        PaymentRequest secureRequest = new PaymentRequest(
-                loginUserId,
-                request.groupId(),
-                request.amount()
-        );
-
-        PaymentResponse response = paymentService.processPayment(secureRequest);
+        PaymentResponse response = paymentService.processPayment(loginUserId, request);
         return ResponseEntity.ok(response);
     }
 }

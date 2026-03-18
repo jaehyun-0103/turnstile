@@ -39,27 +39,28 @@ public class ReservationService {
     private final CacheEvictor cacheEvictor;
     private final JwtProvider jwtProvider;
 
-    @Value("${reservation.policy.max-seats:4}")
+    @Value("${reservation.policy.max-seats-per-user:4}")
     private int maxSeatsPerUser;
 
-    @Value("${reservation.policy.hold-time-minutes:5}")
-    private long holdTimeMinutes;
+    @Value("${reservation.policy.hold-time-seconds:330}")
+    private long holdTimeSeconds;
 
-    @Value("${reservation.policy.payment-expiry-seconds:330}")
+    @Value("${reservation.policy.payment-ttl-seconds:330}")
     private long paymentExpirySeconds;
 
     /**
      * 사용자가 선택한 좌석들을 임시 점유하고 결제용 접근 토큰을 발급합니다.
+     * @param userId 예약 요청 사용자 식별자
      * @param request 예약 요청 정보 (콘서트 ID, 좌석 ID 목록)
      * @return 생성된 예약 그룹 ID와 점유 만료 시간, 결제 토큰
      */
     @Transactional
-    public ReservationResponse reserveSeats(ReservationRequest request) {
+    public ReservationResponse reserveSeats(Long userId, ReservationRequest request) {
         String concertIdStr = String.valueOf(request.concertId());
-        String userIdStr = String.valueOf(request.userId());
+        String userIdStr = String.valueOf(userId);
 
         if (!queueRedisRepository.isActiveUser(concertIdStr, userIdStr)) {
-            throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "예매 권한이 없거나 만료되었습니다. (userId: " + request.userId() + ")");
+            throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "예매 권한이 없거나 만료되었습니다. (userId: " + userId + ")");
         }
 
         if (request.seatIds().size() > maxSeatsPerUser) {
@@ -72,18 +73,18 @@ public class ReservationService {
         Collections.sort(sortedSeatIds);
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(holdTimeMinutes);
+        LocalDateTime expiresAt = now.plusSeconds(holdTimeSeconds);
 
         for (Long seatId : sortedSeatIds) {
-            int updatedRowCount = seatRepository.holdSeatConditionally(seatId, request.userId(), expiresAt);
+            int updatedRowCount = seatRepository.holdSeatConditionally(seatId, userId, expiresAt);
 
             if (updatedRowCount == 0) {
-                log.warn("[Reservation] Reserve Seats | Fail - Seat Already Held (userId: {}, seatId: {})", request.userId(), seatId);
+                log.warn("[Reservation] Reserve Seats | Fail - Seat Already Held (userId: {}, seatId: {})", userId, seatId);
                 throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD, "요청 좌석 ID: " + seatId);
             }
         }
 
-        User userRef = userRepository.getReferenceById(request.userId());
+        User userRef = userRepository.getReferenceById(userId);
         String groupId = UUID.randomUUID().toString();
 
         List<Seat> seats = seatRepository.findAllById(sortedSeatIds);
@@ -104,12 +105,11 @@ public class ReservationService {
         Long scheduleId = seats.get(0).getSchedule().getId();
         cacheEvictor.evictSeatCache(scheduleId);
 
-
         long paymentExpiryMillis = paymentExpirySeconds * 1000L;
         Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
-        String paymentToken = jwtProvider.generateToken(request.userId(), paymentExpiryDate);
+        String paymentToken = jwtProvider.generateToken(userId, paymentExpiryDate);
 
-        log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", request.userId(), groupId, sortedSeatIds.size());
+        log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", userId, groupId, sortedSeatIds.size());
 
         return new ReservationResponse(
                 groupId,

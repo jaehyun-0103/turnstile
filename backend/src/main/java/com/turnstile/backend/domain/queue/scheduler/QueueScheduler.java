@@ -21,10 +21,10 @@ public class QueueScheduler {
 
     private final QueueRedisRepository queueRedisRepository;
 
-    @Value("${queue.admission.batch-size:100}")
+    @Value("${queue.policy.admission-batch-size:100}")
     private long admissionBatchSize;
 
-    @Value("${queue.admission.expiration-time:300}")
+    @Value("${queue.policy.active-ttl-seconds:300}")
     private long expirationTime;
 
     /**

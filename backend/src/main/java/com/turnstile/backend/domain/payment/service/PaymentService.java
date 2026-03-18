@@ -37,9 +37,12 @@ public class PaymentService {
 
     /**
      * 임시 예약된 좌석들의 결제를 진행하고, 유저 잔액 차감 및 좌석 상태를 확정합니다.
+     * @param userId 결제 요청 사용자 식별자
+     * @param request 결제 요청 정보
+     * @return 결제 완료 응답 정보
      */
     @Transactional
-    public PaymentResponse processPayment(PaymentRequest request) {
+    public PaymentResponse processPayment(Long userId, PaymentRequest request) {
         // 예약 정보 존재 여부 확인
         List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(request.groupId());
         if (reservations.isEmpty()) {
@@ -61,7 +64,7 @@ public class PaymentService {
         }
 
         // 유저 잔액 차감 및 좌석 상태 확정 (HOLD -> SOLD)
-        Long remainingBalance = userService.deductBalance(request.userId(), totalAmount);
+        Long remainingBalance = userService.deductBalance(userId, totalAmount);
         seatRepository.confirmSeats(request.groupId());
 
         // 결제 이력 생성 및 영속화
@@ -76,7 +79,7 @@ public class PaymentService {
         Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
         cacheEvictor.evictSeatCache(scheduleId);
 
-        log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", request.userId(), payment.getId(), totalAmount);
+        log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", userId, payment.getId(), totalAmount);
 
         return new PaymentResponse(
                 payment.getId(),

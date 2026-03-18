@@ -37,14 +37,7 @@ public class ReservationController {
 
         log.info("[Reservation] API Request | Reserve Seats (userId: {}, concertId: {}, seatCount: {})", loginUserId, request.concertId(), request.seatIds().size());
 
-        // 인터셉터에서 검증된 userId 주입
-        ReservationRequest secureRequest = new ReservationRequest(
-                loginUserId,
-                request.concertId(),
-                request.seatIds()
-        );
-
-        ReservationResponse response = reservationService.reserveSeats(secureRequest);
+        ReservationResponse response = reservationService.reserveSeats(loginUserId, request);
         return ResponseEntity.ok(response);
     }
 

@@ -1,5 +1,5 @@
--- KEYS[1]: q:waiting:{concertId}
--- KEYS[2]: q:active:{concertId}
+-- KEYS[1]: queue:concert:{concertId}:waiting
+-- KEYS[2]: queue:concert:{concertId}:active
 -- ARGV[1]: 전체 허용 정원
 -- ARGV[2]: 만료 시간 (Unix Timestamp)
 -- ARGV[3]: 초당 유입 제한량 (Batch Size / N)

@@ -2,6 +2,7 @@ package com.turnstile.backend.domain.queue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.turnstile.backend.domain.auth.interceptor.AuthInterceptor;
+import com.turnstile.backend.domain.auth.resolver.LoginUserArgumentResolver;
 import com.turnstile.backend.domain.queue.controller.QueueController;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
@@ -35,20 +36,23 @@ class QueueControllerTest {
 
     @MockitoBean private QueueService queueService;
     @MockitoBean private AuthInterceptor authInterceptor;
+    @MockitoBean private LoginUserArgumentResolver loginUserArgumentResolver;
 
     @BeforeEach
     void setUp() throws Exception {
         // 인터셉터 우회 모킹
         given(authInterceptor.preHandle(any(), any(), any())).willReturn(true);
+        given(loginUserArgumentResolver.supportsParameter(any())).willReturn(true);
+        given(loginUserArgumentResolver.resolveArgument(any(), any(), any(), any())).willReturn(100L);
     }
 
     @Test
     @DisplayName("대기열 진입 API 요청 시 정상적으로 진입 상태와 순번을 반환해야 한다")
     void should_return_queue_entry_status_on_post_request() throws Exception {
         // given: 진입 응답 모킹
-        QueueEntryRequest request = new QueueEntryRequest(100L, 1L);
+        QueueEntryRequest request = new QueueEntryRequest(1L);
         QueueEntryResponse response = new QueueEntryResponse(1L, 5012L, "WAITING");
-        given(queueService.enterQueue(any(QueueEntryRequest.class))).willReturn(response);
+        given(queueService.enterQueue(anyLong(), any(QueueEntryRequest.class))).willReturn(response);
 
         // when & then: JSON 포맷 규격 검증
         mockMvc.perform(post("/api/v1/queue/entry")
@@ -69,8 +73,7 @@ class QueueControllerTest {
 
         // when & then: 파라미터 맵핑 및 JSON 포맷 규격 검증
         mockMvc.perform(get("/api/v1/queue/status")
-                        .param("concertId", "1")
-                        .param("userId", "100"))
+                        .param("concertId", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.concertId").value(1L))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))

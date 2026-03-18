@@ -99,7 +99,7 @@ class ReservationConcurrencyTest {
                 try {
                     readyLatch.countDown();
                     startLatch.await();
-                    reservationService.reserveSeats(new ReservationRequest(userId, testConcertId, List.of(testSeatId1)));
+                    reservationService.reserveSeats(userId, new ReservationRequest(testConcertId, List.of(testSeatId1)));
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
@@ -136,9 +136,9 @@ class ReservationConcurrencyTest {
         queueRedisRepository.transitionQueue(String.valueOf(testConcertId), 1000, 1000, Instant.now().getEpochSecond() + 300);
 
         // when & then: 1번(AVAILABLE)과 2번(HOLD)을 동시에 예매 시도 시 예외 발생 검증
-        ReservationRequest request = new ReservationRequest(testUser.getId(), testConcertId, List.of(testSeatId1, testSeatId2));
+        ReservationRequest request = new ReservationRequest(testConcertId, List.of(testSeatId1, testSeatId2));
 
-        assertThatThrownBy(() -> reservationService.reserveSeats(request))
+        assertThatThrownBy(() -> reservationService.reserveSeats(testUser.getId(), request))
                 .isInstanceOf(TurnstileException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SEAT_ALREADY_HELD); // 1단계 수정 반영

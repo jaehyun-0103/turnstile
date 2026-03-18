@@ -27,10 +27,10 @@ class QueueSchedulerTest {
     @Autowired private RedisTemplate<String, String> redisTemplate;
 
     private static final String CONCERT_ID = "1";
-    private static final String ACTIVE_CONCERTS_KEY = "q:concerts:active";
-    private static final String WAITING_QUEUE_KEY = "q:waiting:" + CONCERT_ID;
-    private static final String ACTIVE_QUEUE_KEY = "q:active:" + CONCERT_ID;
-    private static final String MAX_ACTIVE_CONFIG_KEY = "q:config:max_active:" + CONCERT_ID;
+    private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
+    private static final String WAITING_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":waiting";
+    private static final String ACTIVE_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":active";
+    private static final String MAX_ACTIVE_CONFIG_KEY = "queue:concert:" + CONCERT_ID + ":capacity";
 
     @BeforeEach
     void setUp() {

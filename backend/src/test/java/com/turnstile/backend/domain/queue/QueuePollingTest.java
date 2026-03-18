@@ -36,8 +36,8 @@ class QueuePollingTest {
     @MockitoBean private ConcertRepository concertRepository;
 
     private static final Long CONCERT_ID = 1L;
-    private static final String WAITING_QUEUE_KEY = "q:waiting:" + CONCERT_ID;
-    private static final String ACTIVE_QUEUE_KEY = "q:active:" + CONCERT_ID;
+    private static final String WAITING_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":waiting";
+    private static final String ACTIVE_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":active";
 
     @BeforeEach
     void setUp() {
