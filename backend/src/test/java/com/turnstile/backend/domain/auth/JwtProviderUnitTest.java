@@ -4,10 +4,13 @@ import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,6 +67,52 @@ class JwtProviderUnitTest {
         // when & then: 검증 시 유효하지 않음 예외 발생을 확인함
         TurnstileException exception = assertThrows(TurnstileException.class,
                 () -> jwtProvider.validateToken(invalidToken));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("정상적인 토큰에서 권한 타입을 성공적으로 추출한다")
+    void extractTokenTypeSuccess() {
+        // given: PAYMENT 타입의 토큰을 생성함
+        String token = jwtProvider.generateToken(1L, TokenType.PAYMENT);
+
+        // when: 토큰에서 권한 타입을 추출함
+        TokenType extractedType = jwtProvider.extractTokenType(token);
+
+        // then: 추출된 타입이 PAYMENT와 일치해야 함
+        assertThat(extractedType).isEqualTo(TokenType.PAYMENT);
+    }
+
+    @Test
+    @DisplayName("토큰에 권한 타입이 누락된 경우 INVALID_TOKEN 예외가 발생한다")
+    void extractTokenTypeFailMissingType() {
+        // given: 권한 타입(type) 클레임이 누락된 임의의 토큰 생성
+        String tokenWithoutType = Jwts.builder()
+                .subject("1")
+                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)))
+                .compact();
+
+        // when & then: 타입 추출 시 예외 발생 및 에러 코드 확인
+        TurnstileException exception = assertThrows(TurnstileException.class,
+                () -> jwtProvider.extractTokenType(tokenWithoutType));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("알 수 없는 권한 타입이 조작되어 들어간 토큰 추출 시 INVALID_TOKEN 예외가 발생한다")
+    void extractTokenTypeFailUnknownType() {
+        // given: 존재하지 않는 권한 타입(HACKER_ADMIN)이 포함된 위조 토큰 생성
+        String tokenWithUnknownType = Jwts.builder()
+                .subject("1")
+                .claim("type", "HACKER_ADMIN")
+                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)))
+                .compact();
+
+        // when & then: 타입 추출 시 예외 발생 및 에러 코드 확인
+        TurnstileException exception = assertThrows(TurnstileException.class,
+                () -> jwtProvider.extractTokenType(tokenWithUnknownType));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
     }
 }

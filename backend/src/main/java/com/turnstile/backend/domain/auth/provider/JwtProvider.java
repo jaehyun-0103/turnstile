@@ -83,4 +83,23 @@ public class JwtProvider {
     public Long extractUserId(String token) {
         return Long.valueOf(parseClaims(token).getSubject());
     }
+
+    /**
+     * 토큰에서 권한 타입(TokenType)을 안전하게 추출하고 검증합니다.
+     */
+    public TokenType extractTokenType(String token) {
+        String typeStr = parseClaims(token).get("type", String.class);
+
+        if (typeStr == null) {
+            log.warn("[Auth] Extract Token Type | Fail - Type claim is missing");
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return TokenType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("[Auth] Extract Token Type | Fail - Unknown Token Type: {}", typeStr);
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
+    }
 }
