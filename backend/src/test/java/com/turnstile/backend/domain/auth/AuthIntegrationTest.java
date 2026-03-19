@@ -2,6 +2,7 @@ package com.turnstile.backend.domain.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
@@ -75,7 +76,7 @@ class AuthIntegrationTest {
 
         // given: JwtProvider를 사용하여 1시간 뒤 만료되는 진짜 토큰 생성
         Date expiryDate = new Date(System.currentTimeMillis() + 3600000);
-        String token = jwtProvider.generateToken(testUser.getId(), expiryDate);
+        String token = jwtProvider.generateToken(testUser.getId(), TokenType.IDENTITY, expiryDate);
 
         // when & then: 타 도메인(seats)이 아닌, 테스트 전용 더미 보호 API를 호출
         mockMvc.perform(get("/api/v1/reservations/dummy")

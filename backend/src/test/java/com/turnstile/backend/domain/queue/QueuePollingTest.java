@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.queue;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
@@ -20,6 +21,7 @@ import java.util.Date;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -48,7 +50,7 @@ class QueuePollingTest {
     @DisplayName("Redis 데이터 상태에 따라 ACTIVE, WAITING, INVALID 응답을 정확히 반환해야 한다")
     void should_return_correct_status_based_on_redis_state() {
         // given: JWT 토큰 모킹 및 Redis에 대기/활성 유저 세팅
-        given(jwtProvider.generateToken(anyLong(), any(Date.class))).willReturn("mock-access-token");
+        given(jwtProvider.generateToken(anyLong(), eq(TokenType.QUEUE), any(Date.class))).willReturn("mock-access-token");
 
         redisTemplate.opsForZSet().add(WAITING_QUEUE_KEY, "10", 1); // 대기 1순위
         redisTemplate.opsForZSet().add(WAITING_QUEUE_KEY, "20", 2); // 대기 2순위

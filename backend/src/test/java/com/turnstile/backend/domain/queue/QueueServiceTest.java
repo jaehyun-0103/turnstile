@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.queue;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
@@ -66,7 +67,7 @@ class QueueServiceTest {
 
         given(queueRedisRepository.getActiveUserScore(String.valueOf(concertId), String.valueOf(userId)))
                 .willReturn(fixedScore);
-        given(jwtProvider.generateToken(userId, expectedDate)).willReturn(expectedToken);
+        given(jwtProvider.generateToken(userId, TokenType.QUEUE, expectedDate)).willReturn(expectedToken);
 
         // when: 두 번 연속 폴링 상태 조회
         QueueStatusResponse response1 = queueService.getQueueStatus(concertId, userId);

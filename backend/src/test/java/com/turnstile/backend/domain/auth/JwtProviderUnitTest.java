@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.auth;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
@@ -22,19 +23,18 @@ class JwtProviderUnitTest {
 
     @BeforeEach
     void setUp() {
-        // 리팩토링된 생성자에 맞게 시크릿 키만 주입
         jwtProvider = new JwtProvider(secretKey);
     }
 
     @Test
-    @DisplayName("사용자 식별자를 포함한 토큰 생성 및 추출에 성공한다")
+    @DisplayName("사용자 식별자와 타입을 포함한 토큰 생성 및 추출에 성공한다")
     void generateAndExtractTokenSuccess() {
         // given: 사용자 식별자와 만료 시점 설정
         Long userId = 100L;
         Date expiryDate = new Date(System.currentTimeMillis() + 3600000);
 
-        // when: 토큰을 생성하고 식별자를 추출함
-        String token = jwtProvider.generateToken(userId, expiryDate);
+        // when: 토큰 생성 시 TokenType 명시
+        String token = jwtProvider.generateToken(userId, TokenType.IDENTITY, expiryDate);
         Long extractedUserId = jwtProvider.extractUserId(token);
 
         // then: 생성된 토큰이 존재해야 하며 추출된 ID가 일치해야 함
@@ -47,7 +47,7 @@ class JwtProviderUnitTest {
     void validateTokenFailExpired() {
         // given: 이미 만료된 시점으로 토큰을 생성함
         Date expiredDate = new Date(System.currentTimeMillis() - 1000);
-        String token = jwtProvider.generateToken(1L, expiredDate);
+        String token = jwtProvider.generateToken(1L, TokenType.QUEUE, expiredDate);
 
         // when & then: 검증 시 만료 예외 발생을 확인함
         TurnstileException exception = assertThrows(TurnstileException.class,

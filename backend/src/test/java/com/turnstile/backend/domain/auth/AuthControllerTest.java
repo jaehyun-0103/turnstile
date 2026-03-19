@@ -48,7 +48,7 @@ class AuthControllerTest {
     void loginApiSuccess() throws Exception {
         // given: 로그인 요청과 예상 응답 데이터 설정
         LoginRequest request = new LoginRequest("tester");
-        LoginResponse response = new LoginResponse(1L, "tester", "Mock User", 0L);
+        LoginResponse response = new LoginResponse(1L, "tester", "Mock User", 0L, "mock-identity-token");
         given(authService.login(any(LoginRequest.class))).willReturn(response);
 
         // when & then: API 호출 시 성공 상태 코드와 필드 값을 확인함
@@ -57,6 +57,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(1L))
-                .andExpect(jsonPath("$.username").value("tester"));
+                .andExpect(jsonPath("$.username").value("tester"))
+                .andExpect(jsonPath("$.accessToken").value("mock-identity-token"));
     }
 }

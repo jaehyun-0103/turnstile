@@ -2,6 +2,8 @@ package com.turnstile.backend.domain.auth;
 
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
+import com.turnstile.backend.domain.auth.enums.TokenType;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.auth.service.AuthService;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -27,6 +30,7 @@ import static org.mockito.BDDMockito.given;
 class AuthServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private JwtProvider jwtProvider;
 
     @InjectMocks private AuthService authService;
 
@@ -38,13 +42,14 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest(targetUsername);
 
         User mockUser = User.builder()
-                .id(1L)
                 .username(targetUsername)
                 .name("실제 유저")
                 .balance(50000L)
                 .build();
+        ReflectionTestUtils.setField(mockUser, "id", 1L);
 
         given(userRepository.findByUsername(targetUsername)).willReturn(Optional.of(mockUser));
+        given(jwtProvider.generateToken(1L, TokenType.IDENTITY)).willReturn("mock-identity-token");
 
         // when: 로그인을 수행함
         LoginResponse response = authService.login(request);
@@ -54,6 +59,7 @@ class AuthServiceTest {
         assertThat(response.username()).isEqualTo(targetUsername);
         assertThat(response.name()).isEqualTo("실제 유저");
         assertThat(response.balance()).isEqualTo(50000L);
+        assertThat(response.accessToken()).isEqualTo("mock-identity-token");
     }
 
     @Test
