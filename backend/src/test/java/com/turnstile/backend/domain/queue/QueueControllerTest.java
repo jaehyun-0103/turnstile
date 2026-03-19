@@ -111,4 +111,21 @@ class QueueControllerTest {
                 .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT_VALUE.getCode()))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("양수")));
     }
+
+    @Test
+    @DisplayName("대기열 상태가 WAITING일 때 응답 JSON에서 accessToken 키가 완전히 제외되어야 한다")
+    void should_exclude_accessToken_from_json_when_status_is_waiting() throws Exception {
+        // given: 폴링 응답 모킹 (WAITING 상태, accessToken은 null)
+        QueueStatusResponse response = new QueueStatusResponse(1L, 100L, "WAITING", null);
+        given(queueService.getQueueStatus(anyLong(), anyLong())).willReturn(response);
+
+        // when & then: JSON 포맷 규격 검증 (accessToken 필드가 아예 존재하지 않는지 확인)
+        mockMvc.perform(get("/api/v1/queue/status")
+                        .param("concertId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.concertId").value(1L))
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.rank").value(100L))
+                .andExpect(jsonPath("$.accessToken").doesNotExist()); // 핵심 검증: 키 생략 여부
+    }
 }

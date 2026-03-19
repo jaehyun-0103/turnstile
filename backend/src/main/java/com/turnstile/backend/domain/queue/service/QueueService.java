@@ -43,7 +43,7 @@ public class QueueService {
                 .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND, "요청 콘서트 ID: " + request.concertId()));
 
         if (LocalDateTime.now().isBefore(concert.getTicketingStartAt())) {
-            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "아직 예매가 오픈되지 않았습니다. (오픈 일시: " + concert.getTicketingStartAt() + ")");
+            throw new TurnstileException(ErrorCode.TICKETING_NOT_OPEN, "아직 예매가 오픈되지 않았습니다. (오픈 일시: " + concert.getTicketingStartAt() + ")");
         }
 
         Long result = queueRedisRepository.enterQueue(concertIdStr, userIdStr);
