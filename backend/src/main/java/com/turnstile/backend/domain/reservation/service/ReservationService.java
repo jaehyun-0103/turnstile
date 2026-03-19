@@ -64,6 +64,11 @@ public class ReservationService {
             throw new TurnstileException(ErrorCode.QUEUE_NOT_ACTIVE, "예매 권한이 없거나 만료되었습니다. (userId: " + userId + ")");
         }
 
+        if (request.seatIds() == null || request.seatIds().isEmpty()) {
+            log.warn("[Reservation] Reserve Seats | Fail - Empty seat list (userId: {}, concertId: {})", userId, request.concertId());
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "최소 1개 이상의 좌석을 선택해야 합니다.");
+        }
+
         if (request.seatIds().size() > maxSeatsPerUser) {
             throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE,
                     "최대 " + maxSeatsPerUser + "석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");

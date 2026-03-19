@@ -5,6 +5,7 @@ import com.turnstile.backend.domain.reservation.dto.MyReservationResponse;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.dto.ReservationResponse;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,7 @@ public class ReservationController {
     @PostMapping
     public ResponseEntity<ReservationResponse> reserveSeats(
             @LoginUser Long loginUserId,
-            @RequestBody ReservationRequest request) {
+            @Valid @RequestBody ReservationRequest request) {
 
         log.info("[Reservation] API Request | Reserve Seats (userId: {}, concertId: {}, seatCount: {})", loginUserId, request.concertId(), request.seatIds().size());
 

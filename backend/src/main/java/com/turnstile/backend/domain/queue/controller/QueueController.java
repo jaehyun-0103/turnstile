@@ -5,6 +5,7 @@ import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class QueueController {
     @PostMapping("/entry")
     public ResponseEntity<QueueEntryResponse> enterQueue(
             @LoginUser Long userId,
-            @RequestBody QueueEntryRequest request) {
+            @Valid @RequestBody QueueEntryRequest request) {
         log.info("[Queue] API Request | Enter Queue (userId: {}, concertId: {})", userId, request.concertId());
         QueueEntryResponse response = queueService.enterQueue(userId, request);
         return ResponseEntity.ok(response);

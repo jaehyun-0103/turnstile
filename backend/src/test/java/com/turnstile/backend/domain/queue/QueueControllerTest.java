@@ -8,6 +8,7 @@ import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
 import com.turnstile.backend.domain.queue.service.QueueService;
+import com.turnstile.backend.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -79,5 +80,52 @@ class QueueControllerTest {
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.rank").value(0L))
                 .andExpect(jsonPath("$.accessToken").value("mock-token"));
+    }
+
+    @Test
+    @DisplayName("대기열 진입 시 concertId가 null이면 C001 에러를 반환해야 한다")
+    void should_return_C001_when_concertId_is_null() throws Exception {
+        // given: 필수 값인 concertId가 null인 요청 객체 생성
+        QueueEntryRequest invalidRequest = new QueueEntryRequest(null);
+
+        // when & then: 400 Bad Request 및 ErrorCode.C001 반환 검증
+        mockMvc.perform(post("/api/v1/queue/entry")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT_VALUE.getCode()))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("필수")));
+    }
+
+    @Test
+    @DisplayName("대기열 진입 시 concertId가 양수가 아니면 C001 에러를 반환해야 한다")
+    void should_return_C001_when_concertId_is_not_positive() throws Exception {
+        // given: concertId가 0이거나 음수인 요청 객체 생성
+        QueueEntryRequest invalidRequest = new QueueEntryRequest(0L);
+
+        // when & then: 400 Bad Request 및 양수 검증 실패 메시지 확인
+        mockMvc.perform(post("/api/v1/queue/entry")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT_VALUE.getCode()))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("양수")));
+    }
+
+    @Test
+    @DisplayName("대기열 상태가 WAITING일 때 응답 JSON에서 accessToken 키가 완전히 제외되어야 한다")
+    void should_exclude_accessToken_from_json_when_status_is_waiting() throws Exception {
+        // given: 폴링 응답 모킹 (WAITING 상태, accessToken은 null)
+        QueueStatusResponse response = new QueueStatusResponse(1L, 100L, "WAITING", null);
+        given(queueService.getQueueStatus(anyLong(), anyLong())).willReturn(response);
+
+        // when & then: JSON 포맷 규격 검증 (accessToken 필드가 아예 존재하지 않는지 확인)
+        mockMvc.perform(get("/api/v1/queue/status")
+                        .param("concertId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.concertId").value(1L))
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.rank").value(100L))
+                .andExpect(jsonPath("$.accessToken").doesNotExist()); // 핵심 검증: 키 생략 여부
     }
 }

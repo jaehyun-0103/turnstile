@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.auth.controller;
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
 import com.turnstile.backend.domain.auth.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class AuthController {
      * @return 로그인 성공 결과 응답
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("[Auth] Login Attempt | (username: {})", request.username());
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);

@@ -1,8 +1,11 @@
 package com.turnstile.backend.domain.queue.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 /**
  * 클라이언트의 폴링 요청에 대한 대기열 순위 또는 입장 토큰 반환 데이터입니다.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record QueueStatusResponse(
         Long concertId,
         Long rank,

@@ -38,7 +38,7 @@ class QueueServiceTest {
     @Mock private JwtProvider jwtProvider;
 
     @Test
-    @DisplayName("예매 오픈 시간 전에 대기열 진입 시도 시 INVALID_INPUT_VALUE 예외가 발생해야 한다")
+    @DisplayName("예매 오픈 시간 전에 대기열 진입 시도 시 TICKETING_NOT_OPEN 예외가 발생해야 한다")
     void should_throw_exception_when_enter_queue_before_open_time() {
         // given: 내일 오픈하는 콘서트 세팅
         QueueEntryRequest request = new QueueEntryRequest(1L);
@@ -52,7 +52,7 @@ class QueueServiceTest {
         // when & then: TurnstileException 발생 및 에러 코드 검증
         TurnstileException exception = assertThrows(TurnstileException.class,
                 () -> queueService.enterQueue(100L, request));
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TICKETING_NOT_OPEN);
     }
 
     @Test

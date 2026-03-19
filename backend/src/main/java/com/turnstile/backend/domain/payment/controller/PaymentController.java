@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.annotation.LoginUser;
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.service.PaymentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class PaymentController {
     @PostMapping
     public ResponseEntity<PaymentResponse> processPayment(
             @LoginUser Long loginUserId,
-            @RequestBody PaymentRequest request) {
+            @Valid @RequestBody PaymentRequest request) {
         log.info("[Payment] API Request | Process Payment (userId: {}, groupId: {}, requestAmount: {})", loginUserId, request.groupId(), request.amount());
 
         PaymentResponse response = paymentService.processPayment(loginUserId, request);
