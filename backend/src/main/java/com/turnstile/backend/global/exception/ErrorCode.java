@@ -22,6 +22,7 @@ public enum ErrorCode {
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "U002", "잔액이 부족합니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "만료된 토큰입니다."),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "A003", "해당 API에 대한 접근 권한이 없습니다."),
 
     // 대기열 도메인
     TICKETING_NOT_OPEN(HttpStatus.BAD_REQUEST, "Q001", "예매 오픈 전입니다."),
@@ -38,7 +39,7 @@ public enum ErrorCode {
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "예약 정보를 찾을 수 없습니다."),
     ALREADY_PAID(HttpStatus.BAD_REQUEST, "P002", "이미 결제가 완료된 예약입니다."),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "P003", "결제 금액이 일치하지 않습니다."),
-    CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다."); // CAS 실패 대응
+    CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다.");
 
     private final HttpStatus status;
     private final String code;

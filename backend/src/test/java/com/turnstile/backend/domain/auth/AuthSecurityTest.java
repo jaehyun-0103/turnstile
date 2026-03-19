@@ -1,6 +1,7 @@
 package com.turnstile.backend.domain.auth;
 
 import com.turnstile.backend.domain.auth.annotation.LoginUser;
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.interceptor.AuthInterceptor;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.auth.resolver.LoginUserArgumentResolver;
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * 시스템 보안 계층인 인터셉터와 리졸버의 협력 동작을 검증합니다.
+ * 시스템 보안 계층인 인터셉터의 3-Tier 토큰 권한 검증과 리졸버의 동작을 검증합니다.
  */
 @ExtendWith(MockitoExtension.class)
 class AuthSecurityTest {
@@ -46,54 +47,74 @@ class AuthSecurityTest {
     }
 
     /**
-     * 보안 기능 검증을 위해 인터셉터가 적용된 API 경로를 제공하는 테스트용 컨트롤러입니다.
+     * 3-Tier 권한 레벨별 인터셉터 동작을 검증하기 위한 더미 컨트롤러입니다.
      */
     @RestController
     static class SecurityTestController {
-        @GetMapping("/api/test/protected")
-        public ResponseEntity<String> protectedApi(@LoginUser Long userId) {
+        @GetMapping("/api/v1/users/dummy")
+        public ResponseEntity<String> level1Api(@LoginUser Long userId) {
+            return ResponseEntity.ok("User ID: " + userId);
+        }
+
+        @GetMapping("/api/v1/payments/dummy")
+        public ResponseEntity<String> level3Api(@LoginUser Long userId) {
             return ResponseEntity.ok("User ID: " + userId);
         }
     }
 
     @Test
-    @DisplayName("유효한 토큰으로 요청 시 인터셉터를 통과하여 사용자 식별자가 주입되어야 한다")
-    void should_inject_user_id_when_token_is_valid() throws Exception {
-        // given: 유효한 토큰 스펙 설정
-        String token = "valid.token";
-        willDoNothing().given(jwtProvider).validateToken(token);
+    @DisplayName("유효한 IDENTITY 토큰으로 기본 권한 API 요청 시 인터셉터를 통과해야 한다")
+    void should_pass_base_api_with_identity_token() throws Exception {
+        // given: 유효한 IDENTITY 토큰 스펙 설정
+        String token = "valid.identity.token";
         given(jwtProvider.extractUserId(token)).willReturn(1L);
+        given(jwtProvider.extractTokenType(token)).willReturn(TokenType.IDENTITY);
 
-        // when & then: 인증이 필요한 API 호출 결과 확인
-        mockMvc.perform(get("/api/test/protected")
+        // when & then: Level 1 해당 API 호출 시 통과 확인
+        mockMvc.perform(get("/api/v1/users/dummy")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(content().string("User ID: 1"));
     }
 
     @Test
-    @DisplayName("토큰이 헤더에 아예 존재하지 않으면 인터셉터에서 예외가 발생하고 401 응답을 반환해야 한다")
-    void should_return_401_when_token_is_missing() throws Exception {
-        // given: Authorization 헤더가 없는 상태의 요청
+    @DisplayName("권한이 낮은 IDENTITY 토큰으로 결제(PAYMENT) API 요청 시 ACCESS_DENIED 예외가 발생해야 한다")
+    void should_return_403_when_accessing_payment_with_identity_token() throws Exception {
+        // given: 권한이 낮은 IDENTITY 토큰 스펙 설정
+        String token = "valid.identity.token";
+        given(jwtProvider.extractUserId(token)).willReturn(1L);
+        given(jwtProvider.extractTokenType(token)).willReturn(TokenType.IDENTITY);
 
-        // when & then: 토큰 누락으로 인한 INVALID_TOKEN 예외 및 401 확인
-        mockMvc.perform(get("/api/test/protected"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("A001"));
+        // when & then: 권한 부족으로 인한 403 및 A003 코드 확인
+        mockMvc.perform(get("/api/v1/payments/dummy")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.getCode()));
     }
 
     @Test
-    @DisplayName("토큰이 만료된 경우 인터셉터에서 예외가 발생하고 401 응답을 반환해야 한다")
+    @DisplayName("토큰이 헤더에 아예 존재하지 않으면 인터셉터에서 401 응답을 반환해야 한다")
+    void should_return_401_when_token_is_missing() throws Exception {
+        // given: Authorization 헤더가 없는 상태의 요청
+
+        // when & then: 토큰 누락으로 인한 INVALID_TOKEN 예외 확인
+        mockMvc.perform(get("/api/v1/users/dummy"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_TOKEN.getCode()));
+    }
+
+    @Test
+    @DisplayName("토큰이 만료된 경우 인터셉터에서 401 응답을 반환해야 한다")
     void should_return_401_when_token_is_expired() throws Exception {
-        // given: Provider에서 EXPIRED_TOKEN 예외를 던지도록 모킹
+        // given: Provider 추출 로직에서 EXPIRED_TOKEN 예외를 던지도록 모킹
         String token = "expired.token";
         willThrow(new TurnstileException(ErrorCode.EXPIRED_TOKEN))
-                .given(jwtProvider).validateToken(token);
+                .given(jwtProvider).extractUserId(token);
 
-        // when & then: 글로벌 핸들러를 거쳐 정확한 에러 코드와 401 확인
-        mockMvc.perform(get("/api/test/protected")
+        // when & then: 글로벌 핸들러를 거쳐 정확한 에러 코드 확인
+        mockMvc.perform(get("/api/v1/users/dummy")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("A002"));
+                .andExpect(jsonPath("$.code").value(ErrorCode.EXPIRED_TOKEN.getCode()));
     }
 }
