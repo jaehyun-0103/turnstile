@@ -3,6 +3,7 @@ package com.turnstile.backend.global.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -55,6 +56,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.METHOD_NOT_ALLOWED.getStatus())
                 .body(ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    /**
+     * @Valid 어노테이션에 의한 DTO 파라미터 유효성 검증 실패 예외를 처리합니다.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    protected ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse(ErrorCode.INVALID_INPUT_VALUE.getMessage());
+
+        log.warn("[Global] Validation Exception | Fail - Code: {} (message: {})", ErrorCode.INVALID_INPUT_VALUE.getCode(), errorMessage);
+
+        // ErrorResponse의 Builder를 사용하여 구체적인 에러 메시지 주입
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ErrorResponse.builder()
+                        .status(ErrorCode.INVALID_INPUT_VALUE.getStatus().value())
+                        .code(ErrorCode.INVALID_INPUT_VALUE.getCode())
+                        .message(errorMessage)
+                        .build());
     }
 
     /**
