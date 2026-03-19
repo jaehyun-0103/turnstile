@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.reservation.service;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Seat;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
@@ -107,7 +108,7 @@ public class ReservationService {
 
         long paymentExpiryMillis = paymentExpirySeconds * 1000L;
         Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
-        String paymentToken = jwtProvider.generateToken(userId, paymentExpiryDate);
+        String paymentToken = jwtProvider.generateToken(userId, TokenType.PAYMENT, paymentExpiryDate);
 
         log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", userId, groupId, sortedSeatIds.size());
 

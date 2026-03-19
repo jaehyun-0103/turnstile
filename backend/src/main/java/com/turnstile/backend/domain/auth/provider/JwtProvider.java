@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.auth.provider;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import io.jsonwebtoken.Claims;
@@ -16,74 +17,88 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
- * JWT 토큰의 생성, 유효성 검증 및 정보 추출을 담당하는 컴포넌트입니다.
+ * JWT 토큰의 생성, 서명 검증 및 파싱을 담당하는 유틸리티 클래스입니다.
  */
 @Slf4j
 @Component
 public class JwtProvider {
 
-    private final SecretKey secretKey;
+    private final SecretKey key;
+    private final long defaultValidityInMs = 3600000L; // 기본 만료 시간(1시간)
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
-     * 사용자의 고유 식별자와 지정된 만료 시점을 바탕으로 토큰을 생성합니다.
-     * @param userId 사용자 고유 식별자
-     * @param expiryDate 토큰 만료 시점
-     * @return 생성된 JWT 토큰
+     * 기본 만료 시간을 사용하여 특정 타입의 JWT 토큰을 생성합니다.
      */
-    public String generateToken(Long userId, Date expiryDate) {
-        Date now = new Date();
+    public String generateToken(Long userId, TokenType type) {
+        long now = (new Date()).getTime();
+        Date validity = new Date(now + this.defaultValidityInMs);
+        return generateToken(userId, type, validity);
+    }
 
-        String token = Jwts.builder()
-                .claim("userId", userId)
-                .issuedAt(now)
-                .expiration(expiryDate) // 주입받은 만료 시간 설정
-                .signWith(secretKey)
+    /**
+     * 명시된 만료 시간을 사용하여 특정 타입의 JWT 토큰을 생성합니다.
+     */
+    public String generateToken(Long userId, TokenType type, Date expiryDate) {
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("type", type.name())
+                .expiration(expiryDate)
+                .signWith(key)
                 .compact();
-
-        log.info("[Auth] Token Generate | Success (userId: {})", userId);
-        return token;
     }
 
     /**
-     * 토큰의 서명 및 유효 기간을 검증합니다.
-     * @param token 검증할 JWT 토큰
-     * @throws TurnstileException 토큰이 만료되었거나 유효하지 않은 경우 발생
+     * 토큰의 서명을 검증하고 Payload(Claims)를 파싱하여 반환합니다.
      */
-    public void validateToken(String token) {
+    public Claims parseClaims(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
+            return Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseSignedClaims(token);
+                    .parseSignedClaims(token)
+                    .getPayload();
         } catch (ExpiredJwtException e) {
-            log.warn("[Auth] Token Validate | Fail - Expired token");
+            log.warn("[Auth] Parse Claims | Fail - ErrorCode: {} (message: {})", ErrorCode.EXPIRED_TOKEN.getCode(), e.getMessage());
             throw new TurnstileException(ErrorCode.EXPIRED_TOKEN);
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("[Auth] Token Validate | Fail - Invalid token (message: {})", e.getMessage());
+            log.warn("[Auth] Parse Claims | Fail - ErrorCode: {} (message: {})", ErrorCode.INVALID_TOKEN.getCode(), e.getMessage());
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
     }
 
     /**
-     * 토큰의 페이로드에서 사용자 고유 식별자를 추출합니다.
-     * @param token JWT 토큰
-     * @return 사용자 고유 식별자
+     * 토큰의 유효성을 검증합니다.
+     */
+    public void validateToken(String token) {
+        parseClaims(token);
+    }
+
+    /**
+     * 토큰에서 사용자 식별자를 추출합니다.
      */
     public Long extractUserId(String token) {
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+        return Long.valueOf(parseClaims(token).getSubject());
+    }
 
-            return claims.get("userId", Long.class);
-        } catch (JwtException | IllegalArgumentException e) {
-            log.warn("[Auth] Token Extract | Fail - Cannot extract userId");
+    /**
+     * 토큰에서 권한 타입(TokenType)을 안전하게 추출하고 검증합니다.
+     */
+    public TokenType extractTokenType(String token) {
+        String typeStr = parseClaims(token).get("type", String.class);
+
+        if (typeStr == null) {
+            log.warn("[Auth] Extract Token Type | Fail - Type claim is missing");
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return TokenType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("[Auth] Extract Token Type | Fail - Unknown Token Type: {}", typeStr);
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
     }

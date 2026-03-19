@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.queue.service;
 
+import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
@@ -77,7 +78,7 @@ public class QueueService {
         // 진입 완료 상태 확인
         if (expireTimestamp != null) {
             Date expiryDate = new Date(expireTimestamp.longValue() * 1000);
-            String accessToken = jwtProvider.generateToken(userId, expiryDate);
+            String accessToken = jwtProvider.generateToken(userId, TokenType.QUEUE, expiryDate);
 
             log.info("[Queue] Get Status | Token Issued - Active (userId: {}, concertId: {})", userId, concertId);
             return new QueueStatusResponse(concertId, 0L, "ACTIVE", accessToken);

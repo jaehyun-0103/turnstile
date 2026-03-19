@@ -2,6 +2,8 @@ package com.turnstile.backend.domain.auth.service;
 
 import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
+import com.turnstile.backend.domain.auth.enums.TokenType;
+import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.exception.ErrorCode;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtProvider jwtProvider;
 
     /**
      * 사용자 자격 증명을 확인하고 로그인 응답 정보를 생성합니다.
@@ -29,13 +32,16 @@ public class AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND, "요청 아이디: " + request.username()));
 
+        // IDENTITY 토큰 발급
+        String accessToken = jwtProvider.generateToken(user.getId(), TokenType.IDENTITY);
         log.info("[Auth] Login | Success (userId: {}, username: {})", user.getId(), user.getUsername());
 
         return new LoginResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getName(),
-                user.getBalance()
+                user.getBalance(),
+                accessToken
         );
     }
 }
