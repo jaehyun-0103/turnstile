@@ -72,4 +72,36 @@ class ReservationServiceTest {
         TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
     }
+
+    @Test
+    @DisplayName("요청 좌석 리스트가 비어있을 경우 INVALID_INPUT_VALUE 예외가 발생해야 한다")
+    void should_throw_exception_when_seat_ids_are_empty() {
+        // given: 대기열은 통과했으나 빈 좌석 리스트를 포함한 요청 세팅
+        Long userId = 1L;
+        Long concertId = 100L;
+        ReservationRequest request = new ReservationRequest(concertId, java.util.Collections.emptyList());
+
+        given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
+
+        // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        assertThat(exception.getMessage()).contains("최소 1개");
+    }
+
+    @Test
+    @DisplayName("요청 좌석 리스트가 null일 경우 INVALID_INPUT_VALUE 예외가 발생해야 한다")
+    void should_throw_exception_when_seat_ids_are_null() {
+        // given: 대기열은 통과했으나 좌석 리스트가 null인 요청 세팅
+        Long userId = 1L;
+        Long concertId = 100L;
+        ReservationRequest request = new ReservationRequest(concertId, null);
+
+        given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
+
+        // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        assertThat(exception.getMessage()).contains("최소 1개");
+    }
 }

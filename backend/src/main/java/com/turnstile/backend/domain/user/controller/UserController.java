@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.annotation.LoginUser;
 import com.turnstile.backend.domain.user.dto.UserBalanceResponse;
 import com.turnstile.backend.domain.user.dto.UserChargeRequest;
 import com.turnstile.backend.domain.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,7 @@ public class UserController {
     @PatchMapping("/{userId}/balance")
     public ResponseEntity<UserBalanceResponse> chargeBalance(
             @PathVariable("userId") Long userId,
-            @RequestBody UserChargeRequest request) {
+            @Valid @RequestBody UserChargeRequest request) {
         log.info("[User] API Request | Charge Balance (userId: {}, amount: {})", userId, request.amount());
         Long updatedBalance = userService.chargeBalance(userId, request.amount());
         return ResponseEntity.ok(new UserBalanceResponse(userId, updatedBalance));
