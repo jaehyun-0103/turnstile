@@ -49,6 +49,13 @@ public class PaymentService {
             throw new TurnstileException(ErrorCode.RESERVATION_NOT_FOUND, "요청 그룹 ID: " + request.groupId());
         }
 
+        // 결제 요청자와 예약 소유자가 일치하는지 검증하여 타인의 예약 탈취 결제를 차단
+        Long reservationOwnerId = reservations.get(0).getUser().getId();
+        if (!reservationOwnerId.equals(userId)) {
+            log.warn("[Payment] Ownership Validation | Fail - Unauthorized access (requestUserId: {}, ownerUserId: {})", userId, reservationOwnerId);
+            throw new TurnstileException(ErrorCode.FORBIDDEN_USER, "요청 유저 ID: " + userId);
+        }
+
         // 결제 금액 위변조 여부 검증
         long totalAmount = reservations.stream().mapToLong(Reservation::getPrice).sum();
         if (totalAmount != request.amount()) {
