@@ -24,6 +24,11 @@ spring:
       host: localhost
       port: 6380
 
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
 jwt:
   secret: "turnstile-ticketing-system-secret-key"
 

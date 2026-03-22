@@ -44,6 +44,7 @@ class PaymentIntegrationTest {
 
     private Long testUserId;
     private Long testSeatId;
+    private Long testConcertId;
     private final String testGroupId = "integration-group-123";
 
     @BeforeEach
@@ -61,6 +62,8 @@ class PaymentIntegrationTest {
             testUserId = user.getId();
 
             Concert concert = concertRepository.save(Concert.builder().title("아이유 콘서트").ticketingStartAt(LocalDateTime.now().minusDays(1)).build());
+            testConcertId = concert.getId();
+
             ConcertSchedule schedule = concertScheduleRepository.save(ConcertSchedule.builder().concert(concert).concertDate(LocalDateTime.now().plusDays(10)).totalSeats(100).build());
 
             Seat seat = seatRepository.save(Seat.builder().schedule(schedule).seatNo(1).price(150000L).status(SeatStatus.HOLD).holdUserId(user.getId()).holdExpiresAt(LocalDateTime.now().plusMinutes(5)).build());
@@ -75,7 +78,7 @@ class PaymentIntegrationTest {
     @DisplayName("결제 성공 시 유저 잔액이 차감되고 좌석은 SOLD, 예약은 PAID 상태로 정확히 전이되어야 한다")
     void should_complete_payment_flow_atomically() {
         // given: 20만원 보유 유저가 15만원 결제 요청
-        PaymentRequest request = new PaymentRequest(testGroupId, 150000L);
+        PaymentRequest request = new PaymentRequest(testGroupId, 150000L, testConcertId);
 
         // when: 결제 프로세스 실행
         PaymentResponse response = paymentService.processPayment(testUserId, request);

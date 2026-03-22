@@ -42,4 +42,10 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Query("UPDATE Seat s SET s.status = 'SOLD' " +
             "WHERE s.id IN (SELECT r.seat.id FROM Reservation r WHERE r.groupId = :groupId)")
     int confirmSeats(@Param("groupId") String groupId);
+
+    // 예약 검증 로직에서 연관된 스케줄 및 콘서트 정보를 단일 쿼리(Fetch Join)로 적재함
+    @Query("SELECT s FROM Seat s " +
+            "JOIN FETCH s.schedule sc JOIN FETCH sc.concert " +
+            "WHERE s.id IN :seatIds")
+    List<Seat> findAllByIdWithScheduleAndConcert(@Param("seatIds") List<Long> seatIds);
 }

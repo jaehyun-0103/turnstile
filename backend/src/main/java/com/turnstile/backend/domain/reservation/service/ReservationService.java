@@ -74,9 +74,41 @@ public class ReservationService {
                     "최대 " + maxSeatsPerUser + "석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
         }
 
-        // DB 데드락(Deadlock) 예방을 위해 좌석 ID를 항상 오름차순으로 정렬하여 락을 획득함
-        List<Long> sortedSeatIds = new ArrayList<>(request.seatIds());
+        // DB 데드락 방지 및 중복 요청으로 인한 자원 낭비를 막기 위해 좌석 ID 중복 제거 후 오름차순 정렬
+        List<Long> distinctSeatIds = request.seatIds().stream().distinct().toList();
+        List<Long> sortedSeatIds = new ArrayList<>(distinctSeatIds);
         Collections.sort(sortedSeatIds);
+
+        List<Seat> seats = seatRepository.findAllByIdWithScheduleAndConcert(sortedSeatIds);
+
+        // 비정상적인 좌석 ID 요청 시 DB 락 획득을 시도하기 전 최전방에서 차단(Fail-Fast)하여 부하 방지
+        if (seats.size() != distinctSeatIds.size()) {
+            log.warn("[Reservation] Validate Seats | Fail (reason: seat not found, requestedCount: {}, foundCount: {})",
+                    distinctSeatIds.size(), seats.size());
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "존재하지 않거나 유효하지 않은 좌석이 포함되어 있습니다.");
+        }
+
+        // 타 콘서트 대기열 통과 후 좌석 ID를 조작하는 우회 공격을 차단하기 위해 실제 콘서트 ID 교차 검증
+        for (Seat seat : seats) {
+            Long actualConcertId = seat.getSchedule().getConcert().getId();
+            if (!actualConcertId.equals(request.concertId())) {
+                log.warn("[Reservation] Validate Seats | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})",
+                        request.concertId(), actualConcertId);
+                throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "요청한 콘서트의 좌석이 아닙니다.");
+            }
+        }
+
+        // 데이터 무결성 훼손 및 결제 꼬임을 방지하기 위해 하나의 예약 그룹에는 단일 회차의 좌석만 포함되도록 제한
+        long uniqueScheduleCount = seats.stream()
+                .map(seat -> seat.getSchedule().getId())
+                .distinct()
+                .count();
+
+        if (uniqueScheduleCount > 1) {
+            log.warn("[Reservation] Validate Seats | Fail (reason: cross schedule booking, uniqueScheduleCount: {})",
+                    uniqueScheduleCount);
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "서로 다른 회차의 좌석을 섞어서 예매할 수 없습니다.");
+        }
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusSeconds(holdTimeSeconds);
@@ -93,7 +125,6 @@ public class ReservationService {
         User userRef = userRepository.getReferenceById(userId);
         String groupId = UUID.randomUUID().toString();
 
-        List<Seat> seats = seatRepository.findAllById(sortedSeatIds);
         List<Reservation> reservations = seats.stream()
                 .map(seat -> Reservation.builder()
                         .groupId(groupId)

@@ -39,7 +39,8 @@ public enum ErrorCode {
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "예약 정보를 찾을 수 없습니다."),
     ALREADY_PAID(HttpStatus.BAD_REQUEST, "P002", "이미 결제가 완료된 예약입니다."),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "P003", "결제 금액이 일치하지 않습니다."),
-    CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다.");
+    CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다."),
+    FORBIDDEN_USER(HttpStatus.FORBIDDEN, "P005", "결제 권한이 없습니다.");
 
     private final HttpStatus status;
     private final String code;

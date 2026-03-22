@@ -49,6 +49,21 @@ public class PaymentService {
             throw new TurnstileException(ErrorCode.RESERVATION_NOT_FOUND, "요청 그룹 ID: " + request.groupId());
         }
 
+        // 결제 요청자와 예약 소유자가 일치하는지 검증하여 타인의 예약 탈취 결제를 차단
+        Long reservationOwnerId = reservations.get(0).getUser().getId();
+        if (!reservationOwnerId.equals(userId)) {
+            log.warn("[Payment] Ownership Validation | Fail - Unauthorized access (requestUserId: {}, ownerUserId: {})", userId, reservationOwnerId);
+            throw new TurnstileException(ErrorCode.FORBIDDEN_USER, "요청 유저 ID: " + userId);
+        }
+
+        // 타 콘서트 대기열 우회 결제 및 엉뚱한 활성 유저 퇴출 테러를 방지하기 위한 콘서트 ID 교차 검증
+        Long actualConcertId = reservations.get(0).getSeat().getSchedule().getConcert().getId();
+        if (!actualConcertId.equals(request.concertId())) {
+            log.warn("[Payment] Validate Concert | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})",
+                    request.concertId(), actualConcertId);
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "결제 대상 콘서트 정보가 일치하지 않습니다.");
+        }
+
         // 결제 금액 위변조 여부 검증
         long totalAmount = reservations.stream().mapToLong(Reservation::getPrice).sum();
         if (totalAmount != request.amount()) {
