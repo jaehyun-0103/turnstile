@@ -39,7 +39,6 @@ class ConcertControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // 인터셉터 우회 설정
         given(authInterceptor.preHandle(any(), any(), any())).willReturn(true);
     }
 
@@ -47,14 +46,16 @@ class ConcertControllerTest {
     @DisplayName("콘서트 목록 조회 시 올바른 JSON 구조와 데이터를 반환해야 한다")
     void should_return_concert_list_with_correct_json_structure() throws Exception {
         // given: 콘서트 목록 응답 모킹
-        List<ConcertResponse> responses = List.of(new ConcertResponse(1L, "테스트 콘서트", "상세 설명"));
+        LocalDateTime ticketingTime = LocalDateTime.of(2026, 3, 22, 12, 0);
+        List<ConcertResponse> responses = List.of(new ConcertResponse(1L, "테스트 콘서트", "상세 설명", ticketingTime));
         given(concertService.getConcerts()).willReturn(responses);
 
         // when & then: API 호출 및 데이터 검증
         mockMvc.perform(get("/api/v1/concerts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("테스트 콘서트"));
+                .andExpect(jsonPath("$[0].title").value("테스트 콘서트"))
+                .andExpect(jsonPath("$[0].ticketingStartAt").exists());
     }
 
     @Test
