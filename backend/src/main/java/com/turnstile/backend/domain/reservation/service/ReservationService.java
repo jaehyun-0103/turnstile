@@ -79,7 +79,7 @@ public class ReservationService {
         List<Long> sortedSeatIds = new ArrayList<>(distinctSeatIds);
         Collections.sort(sortedSeatIds);
 
-        List<Seat> seats = seatRepository.findAllById(sortedSeatIds);
+        List<Seat> seats = seatRepository.findAllByIdWithScheduleAndConcert(sortedSeatIds);
 
         // 비정상적인 좌석 ID 요청 시 DB 락 획득을 시도하기 전 최전방에서 차단(Fail-Fast)하여 부하 방지
         if (seats.size() != distinctSeatIds.size()) {
@@ -124,8 +124,6 @@ public class ReservationService {
 
         User userRef = userRepository.getReferenceById(userId);
         String groupId = UUID.randomUUID().toString();
-
-
 
         List<Reservation> reservations = seats.stream()
                 .map(seat -> Reservation.builder()
