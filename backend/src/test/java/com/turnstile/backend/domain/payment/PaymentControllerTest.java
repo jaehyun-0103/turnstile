@@ -48,7 +48,7 @@ class PaymentControllerTest {
     @DisplayName("정상적인 결제 요청 시 200 OK와 함께 결제 완료 상세 정보를 반환해야 한다")
     void should_return_payment_response_on_success() throws Exception {
         // given: 요청 및 예상 응답 데이터 세팅
-        PaymentRequest request = new PaymentRequest("group-123", 150000L);
+        PaymentRequest request = new PaymentRequest("group-123", 150000L, 100L);
         PaymentResponse response = new PaymentResponse(1L, "PAID", LocalDateTime.now(), 50000L);
 
         given(paymentService.processPayment(any(Long.class), any(PaymentRequest.class))).willReturn(response);
