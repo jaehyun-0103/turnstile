@@ -10,6 +10,7 @@ import com.turnstile.backend.domain.payment.repository.PaymentRepository;
 import com.turnstile.backend.domain.payment.service.PaymentService;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
+import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.global.common.CacheEvictor;
@@ -48,11 +49,16 @@ class PaymentServiceTest {
     @Test
     @DisplayName("결제 성공 시 모든 검증을 통과하고 PAID 상태와 잔액을 반환해야 한다")
     void should_return_success_response_when_all_validations_pass() {
-        // given: 성공 시나리오를 위한 Mock 체인 (NPE 방어)
+        // given: 소유자 검증 로직 통과를 위한 User Mocking 추가
         String groupId = "success-group";
         Reservation mockReservation = mock(Reservation.class);
         Seat mockSeat = mock(Seat.class);
         ConcertSchedule mockSchedule = mock(ConcertSchedule.class);
+        User mockUser = mock(User.class);
+
+        // 요청 유저 ID와 예약 소유자 ID가 동일(1L)하도록 설정
+        given(mockReservation.getUser()).willReturn(mockUser);
+        given(mockUser.getId()).willReturn(1L);
 
         given(mockReservation.getPrice()).willReturn(150000L);
         given(mockReservation.getSeat()).willReturn(mockSeat);
@@ -79,10 +85,15 @@ class PaymentServiceTest {
     @Test
     @DisplayName("요청 금액과 실제 예약 금액의 총합이 다를 경우 PAYMENT_AMOUNT_MISMATCH 예외가 발생해야 한다")
     void should_throw_exception_when_amount_mismatches() {
-        // given: 금액 검증 실패 상황
+        // given: 금액 검증 실패 상황 (소유자 검증은 통과하도록 설정)
         String groupId = "test-group";
         Reservation mockReservation = mock(Reservation.class);
+        User mockUser = mock(User.class);
+
+        given(mockReservation.getUser()).willReturn(mockUser);
+        given(mockUser.getId()).willReturn(1L);
         given(mockReservation.getPrice()).willReturn(150000L);
+
         given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
 
         PaymentRequest request = new PaymentRequest(groupId, 100000L);
