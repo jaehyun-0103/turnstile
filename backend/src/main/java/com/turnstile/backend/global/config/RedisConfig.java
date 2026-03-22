@@ -69,7 +69,10 @@ public class RedisConfig {
         // 캐시 데이터 역직렬화 시 구체적인 객체 타입을 식별하기 위해 타입 정보를 함께 저장하도록 설정
         objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
-                        .allowIfBaseType(Object.class)
+                        .allowIfSubType("com.turnstile.backend")
+                        .allowIfSubType("java.util")
+                        .allowIfSubType("java.lang")
+                        .allowIfSubType("java.time")
                         .build(),
                 ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
