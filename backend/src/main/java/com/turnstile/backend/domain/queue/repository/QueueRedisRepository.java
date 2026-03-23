@@ -41,6 +41,7 @@ public class QueueRedisRepository {
 
     /**
      * 허용된 정원과 초당 유입 제한량(Batch Size)에 맞춰 대기 중인 유저를 활성(입장) 상태로 전이합니다.
+     * 빈 콘서트일 경우 Lua 스크립트 내부에서 자동으로 스케줄러 순회 대상에서 제외(Self-Cleanup)합니다.
      * @return 활성 상태로 전이된 사용자 ID 목록
      */
     public List<String> transitionQueue(String concertIdStr, long maxCapacity, long batchSize, long expireScore) {
@@ -49,10 +50,11 @@ public class QueueRedisRepository {
 
         return redisTemplate.execute(
                 transitionQueueScript,
-                List.of(waitingKey, activeKey),
+                List.of(waitingKey, activeKey, "queue:scheduler:active_concerts"),
                 String.valueOf(maxCapacity),
                 String.valueOf(expireScore),
-                String.valueOf(batchSize)
+                String.valueOf(batchSize),
+                concertIdStr
         );
     }
 
