@@ -6,15 +6,15 @@ import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.entity.Payment;
 import com.turnstile.backend.domain.payment.entity.PaymentStatus;
 import com.turnstile.backend.domain.payment.repository.PaymentRepository;
-import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.service.UserService;
-import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.event.SeatCacheEvictEvent;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +33,7 @@ public class PaymentService {
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final PaymentRepository paymentRepository;
-    private final CacheEvictor cacheEvictor;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 임시 예약된 좌석들의 결제를 진행하고, 유저 잔액 차감 및 좌석 상태를 확정합니다.
@@ -90,9 +90,9 @@ public class PaymentService {
                 .paidAt(LocalDateTime.now())
                 .build());
 
-        // 캐시 무효화
+        // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
-        cacheEvictor.evictSeatCache(scheduleId);
+        eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
 
         log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", userId, payment.getId(), totalAmount);
 

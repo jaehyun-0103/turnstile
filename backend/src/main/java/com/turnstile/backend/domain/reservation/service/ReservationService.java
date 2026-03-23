@@ -13,12 +13,13 @@ import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
-import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.event.SeatCacheEvictEvent;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +38,7 @@ public class ReservationService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
-    private final CacheEvictor cacheEvictor;
+    private final ApplicationEventPublisher eventPublisher;
     private final JwtProvider jwtProvider;
 
     @Value("${reservation.policy.max-seats-per-user:4}")
@@ -138,9 +139,9 @@ public class ReservationService {
 
         reservationRepository.saveAll(reservations);
 
-        // 캐시 즉시 무효화 (팬텀 클릭 차단)
+        // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         Long scheduleId = seats.get(0).getSchedule().getId();
-        cacheEvictor.evictSeatCache(scheduleId);
+        eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
 
         long paymentExpiryMillis = paymentExpirySeconds * 1000L;
         Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
