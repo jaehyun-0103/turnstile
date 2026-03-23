@@ -6,6 +6,7 @@ import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.entity.Payment;
 import com.turnstile.backend.domain.payment.entity.PaymentStatus;
 import com.turnstile.backend.domain.payment.repository.PaymentRepository;
+import com.turnstile.backend.domain.queue.event.UserTicketingCompletedEvent;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.service.UserService;
@@ -90,9 +91,11 @@ public class PaymentService {
                 .paidAt(LocalDateTime.now())
                 .build());
 
-        // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
+        // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
+        // 결제 확정 즉시 활성열에서 유저를 퇴출하기 위한 이벤트 발행 (좀비 슬롯 방어)
+        eventPublisher.publishEvent(new UserTicketingCompletedEvent(request.concertId(), userId));
 
         log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", userId, payment.getId(), totalAmount);
 
