@@ -41,6 +41,7 @@ public class QueueRedisRepository {
 
     /**
      * 허용된 정원과 초당 유입 제한량(Batch Size)에 맞춰 대기 중인 유저를 활성(입장) 상태로 전이합니다.
+     * 빈 콘서트일 경우 Lua 스크립트 내부에서 자동으로 스케줄러 순회 대상에서 제외(Self-Cleanup)합니다.
      * @return 활성 상태로 전이된 사용자 ID 목록
      */
     public List<String> transitionQueue(String concertIdStr, long maxCapacity, long batchSize, long expireScore) {
@@ -49,10 +50,11 @@ public class QueueRedisRepository {
 
         return redisTemplate.execute(
                 transitionQueueScript,
-                List.of(waitingKey, activeKey),
+                List.of(waitingKey, activeKey, "queue:scheduler:active_concerts"),
                 String.valueOf(maxCapacity),
                 String.valueOf(expireScore),
-                String.valueOf(batchSize)
+                String.valueOf(batchSize),
+                concertIdStr
         );
     }
 
@@ -104,5 +106,14 @@ public class QueueRedisRepository {
     public Double getActiveUserScore(String concertIdStr, String userIdStr) {
         String activeKey = "queue:concert:" + concertIdStr + ":active";
         return redisTemplate.opsForZSet().score(activeKey, userIdStr);
+    }
+
+    /**
+     * 결제 완료 등 비즈니스 목적을 달성한 유저를 활성열에서 즉시 퇴출합니다.
+     * 대기열의 병목을 해소하고 회전율을 극대화하기 위해 사용됩니다.
+     */
+    public void removeActiveUser(String concertIdStr, String userIdStr) {
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
+        redisTemplate.opsForZSet().remove(activeKey, userIdStr);
     }
 }
