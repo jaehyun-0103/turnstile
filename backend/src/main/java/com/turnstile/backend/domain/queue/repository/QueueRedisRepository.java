@@ -105,4 +105,13 @@ public class QueueRedisRepository {
         String activeKey = "queue:concert:" + concertIdStr + ":active";
         return redisTemplate.opsForZSet().score(activeKey, userIdStr);
     }
+
+    /**
+     * 결제 완료 등 비즈니스 목적을 달성한 유저를 활성열에서 즉시 퇴출합니다.
+     * 대기열의 병목을 해소하고 회전율을 극대화하기 위해 사용됩니다.
+     */
+    public void removeActiveUser(String concertIdStr, String userIdStr) {
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
+        redisTemplate.opsForZSet().remove(activeKey, userIdStr);
+    }
 }
