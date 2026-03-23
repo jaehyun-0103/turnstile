@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.payment;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
 import com.turnstile.backend.domain.concert.entity.Seat;
+import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.entity.Payment;
@@ -13,8 +14,6 @@ import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.service.UserService;
-import com.turnstile.backend.domain.concert.repository.SeatRepository;
-import com.turnstile.backend.global.common.CacheEvictor;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,7 +45,7 @@ class PaymentServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private SeatRepository seatRepository;
     @Mock private PaymentRepository paymentRepository;
-    @Mock private CacheEvictor cacheEvictor;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("결제 성공 시 모든 검증을 통과하고 PAID 상태와 잔액을 반환해야 한다")
@@ -64,6 +64,9 @@ class PaymentServiceTest {
         given(mockReservation.getPrice()).willReturn(150000L);
         given(mockReservation.getSeat()).willReturn(mockSeat);
         given(mockSeat.getSchedule()).willReturn(mockSchedule);
+
+        given(mockSchedule.getId()).willReturn(10L);
+
         given(mockSchedule.getConcert()).willReturn(mockConcert);
         given(mockConcert.getId()).willReturn(100L);
 
@@ -73,6 +76,7 @@ class PaymentServiceTest {
 
         Payment mockPayment = Payment.builder().id(1L).status(PaymentStatus.PAID).paidAt(LocalDateTime.now()).build();
         given(paymentRepository.save(any(Payment.class))).willReturn(mockPayment);
+
         PaymentRequest request = new PaymentRequest(groupId, 150000L, 100L);
 
         // when
