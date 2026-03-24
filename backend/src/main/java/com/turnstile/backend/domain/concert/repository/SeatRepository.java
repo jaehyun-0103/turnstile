@@ -32,7 +32,6 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
             "WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
     int releaseExpiredSeats(@Param("now") LocalDateTime now);
 
-
     // 좌석 상태 변경에 따른 캐시 무효화를 위해 만료된 좌석이 포함된 회차 식별자를 조회함
     @Query("SELECT DISTINCT s.schedule.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
     List<Long> findScheduleIdsByExpiredSeats(@Param("now") LocalDateTime now);
@@ -41,7 +40,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Seat s SET s.status = 'SOLD' " +
             "WHERE s.id IN (SELECT r.seat.id FROM Reservation r WHERE r.groupId = :groupId)")
-    int confirmSeats(@Param("groupId") String groupId);
+    void confirmSeats(@Param("groupId") String groupId);
 
     // 예약 검증 로직에서 연관된 스케줄 및 콘서트 정보를 단일 쿼리(Fetch Join)로 적재함
     @Query("SELECT s FROM Seat s " +

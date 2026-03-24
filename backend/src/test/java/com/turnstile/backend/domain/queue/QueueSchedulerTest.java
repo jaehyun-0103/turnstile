@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.queue;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.scheduler.QueueScheduler;
 import com.turnstile.backend.global.config.RedisConfig;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class QueueSchedulerTest {
 
     @BeforeEach
     void setUp() {
+        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
         // 테스트의 직관성을 위해 스케줄러의 프로퍼티 값을 강제 주입
         ReflectionTestUtils.setField(queueScheduler, "admissionBatchSize", 100L);

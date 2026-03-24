@@ -24,7 +24,6 @@ import java.util.Date;
 public class JwtProvider {
 
     private final SecretKey key;
-    private final long defaultValidityInMs = 3600000L; // 기본 만료 시간(1시간)
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -35,7 +34,8 @@ public class JwtProvider {
      */
     public String generateToken(Long userId, TokenType type) {
         long now = (new Date()).getTime();
-        Date validity = new Date(now + this.defaultValidityInMs);
+        long defaultValidityInMs = 3600000L; // 기본 만료 시간(1시간)
+        Date validity = new Date(now + defaultValidityInMs);
         return generateToken(userId, type, validity);
     }
 
@@ -62,10 +62,10 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            log.warn("[Auth] Parse Claims | Fail - ErrorCode: {} (message: {})", ErrorCode.EXPIRED_TOKEN.getCode(), e.getMessage());
+            log.warn("[Auth] Parse Claims | Fail - Token is expired (code: {}, message: {})", ErrorCode.EXPIRED_TOKEN.getCode(), e.getMessage());
             throw new TurnstileException(ErrorCode.EXPIRED_TOKEN);
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("[Auth] Parse Claims | Fail - ErrorCode: {} (message: {})", ErrorCode.INVALID_TOKEN.getCode(), e.getMessage());
+            log.warn("[Auth] Parse Claims | Fail - Token is invalid (code: {}, message: {})", ErrorCode.INVALID_TOKEN.getCode(), e.getMessage());
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
     }

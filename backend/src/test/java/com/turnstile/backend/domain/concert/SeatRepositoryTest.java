@@ -131,6 +131,6 @@ class SeatRepositoryTest {
 
         // then: 해당 회차 ID가 결과에 포함되어 있는지 확인
         assertThat(scheduleIds).hasSize(1);
-        assertThat(scheduleIds.get(0)).isEqualTo(schedule.getId());
+        assertThat(scheduleIds.getFirst()).isEqualTo(schedule.getId());
     }
 }

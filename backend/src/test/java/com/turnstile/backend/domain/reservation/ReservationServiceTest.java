@@ -1,13 +1,8 @@
 package com.turnstile.backend.domain.reservation;
 
-import com.turnstile.backend.domain.auth.provider.JwtProvider;
-import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
-import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
-import com.turnstile.backend.domain.user.repository.UserRepository;
-import com.turnstile.backend.global.common.CacheEvictor;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import org.junit.jupiter.api.BeforeEach;
