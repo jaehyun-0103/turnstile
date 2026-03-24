@@ -19,6 +19,7 @@ public enum TokenType {
      * 현재 토큰의 레벨이 요청된 API의 요구 레벨을 충족하는지 검증합니다.
      * PAYMENT 토큰은 오직 PAYMENT 전용 API에서만 사용되도록 격리합니다.
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean hasAccess(TokenType required) {
         if (required == PAYMENT) {
             return this == PAYMENT;

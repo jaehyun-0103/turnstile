@@ -2,7 +2,6 @@ package com.turnstile.backend.domain.concert;
 
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
-import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.concert.service.ConcertService;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;

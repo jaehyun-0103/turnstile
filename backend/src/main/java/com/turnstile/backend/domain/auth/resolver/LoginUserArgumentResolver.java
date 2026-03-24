@@ -27,7 +27,6 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
 
-        // 인터셉터에서 검증 후 저장한 사용자 식별자를 반환함
         return request.getAttribute("userId"); // Interceptor에서 request에 저장한 userId 반환
     }
 }

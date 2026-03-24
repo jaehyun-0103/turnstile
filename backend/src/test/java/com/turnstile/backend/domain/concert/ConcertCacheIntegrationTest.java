@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +44,7 @@ class ConcertCacheIntegrationTest {
 
     @BeforeEach
     void clearCache() {
-        cacheManager.getCache("concert:schedule").clear();
+        Objects.requireNonNull(cacheManager.getCache("concert:schedule")).clear();
     }
 
     @Test

@@ -51,14 +51,14 @@ public class PaymentService {
         }
 
         // 결제 요청자와 예약 소유자가 일치하는지 검증하여 타인의 예약 탈취 결제를 차단
-        Long reservationOwnerId = reservations.get(0).getUser().getId();
+        Long reservationOwnerId = reservations.getFirst().getUser().getId();
         if (!reservationOwnerId.equals(userId)) {
             log.warn("[Payment] Ownership Validation | Fail - Unauthorized access (requestUserId: {}, ownerUserId: {})", userId, reservationOwnerId);
             throw new TurnstileException(ErrorCode.FORBIDDEN_USER, "요청 유저 ID: " + userId);
         }
 
         // 타 콘서트 대기열 우회 결제 및 엉뚱한 활성 유저 퇴출 테러를 방지하기 위한 콘서트 ID 교차 검증
-        Long actualConcertId = reservations.get(0).getSeat().getSchedule().getConcert().getId();
+        Long actualConcertId = reservations.getFirst().getSeat().getSchedule().getConcert().getId();
         if (!actualConcertId.equals(request.concertId())) {
             log.warn("[Payment] Validate Concert | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})",
                     request.concertId(), actualConcertId);
@@ -91,7 +91,7 @@ public class PaymentService {
                 .paidAt(LocalDateTime.now())
                 .build());
 
-        Long scheduleId = reservations.get(0).getSeat().getSchedule().getId();
+        Long scheduleId = reservations.getFirst().getSeat().getSchedule().getId();
         // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
         // 결제 확정 즉시 활성열에서 유저를 퇴출하기 위한 이벤트 발행 (좀비 슬롯 방어)

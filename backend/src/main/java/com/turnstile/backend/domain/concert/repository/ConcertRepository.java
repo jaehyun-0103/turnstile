@@ -1,6 +1,7 @@
 package com.turnstile.backend.domain.concert.repository;
 
 import com.turnstile.backend.domain.concert.entity.Concert;
+import jakarta.annotation.Nonnull;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,11 +15,12 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     /**
      * 콘서트 단건 조회 시 캐시를 우선적으로 확인합니다.
      */
+    @Nonnull
     @Override
     @Cacheable(
             cacheNames = "concert:info",
             key = "#id",
             unless = "#result == null"
     )
-    Optional<Concert> findById(Long id);
+    Optional<Concert> findById(@Nonnull Long id);
 }

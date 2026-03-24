@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * @Valid 어노테이션에 의한 DTO 파라미터 유효성 검증 실패 예외를 처리합니다.
+     * {@code @Valid} 어노테이션에 의한 DTO 파라미터 유효성 검증 실패 예외를 처리합니다.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {

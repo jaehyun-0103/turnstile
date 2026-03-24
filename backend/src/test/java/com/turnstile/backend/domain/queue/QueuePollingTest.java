@@ -7,6 +7,7 @@ import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.global.config.RedisConfig;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ class QueuePollingTest {
 
     @BeforeEach
     void setUp() {
+        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
     }
 

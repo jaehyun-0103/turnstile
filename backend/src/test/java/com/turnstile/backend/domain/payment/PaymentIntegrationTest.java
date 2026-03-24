@@ -15,6 +15,7 @@ import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ class PaymentIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
 
         transactionTemplate.execute(status -> {
@@ -85,12 +87,12 @@ class PaymentIntegrationTest {
 
         // then: 잔액 차감 검증
         assertThat(response.balance()).isEqualTo(50000L);
-        assertThat(userRepository.findById(testUserId).get().getBalance()).isEqualTo(50000L);
+        assertThat(userRepository.findById(testUserId).orElseThrow().getBalance()).isEqualTo(50000L);
 
         // then: 좌석 상태 검증
-        assertThat(seatRepository.findById(testSeatId).get().getStatus()).isEqualTo(SeatStatus.SOLD);
+        assertThat(seatRepository.findById(testSeatId).orElseThrow().getStatus()).isEqualTo(SeatStatus.SOLD);
 
         // then: 예약 상태 검증
-        assertThat(reservationRepository.findAllByGroupIdWithSeat(testGroupId).get(0).getStatus()).isEqualTo(ReservationStatus.PAID);
+        assertThat(reservationRepository.findAllByGroupIdWithSeat(testGroupId).getFirst().getStatus()).isEqualTo(ReservationStatus.PAID);
     }
 }

@@ -140,7 +140,7 @@ public class ReservationService {
         reservationRepository.saveAll(reservations);
 
         // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
-        Long scheduleId = seats.get(0).getSchedule().getId();
+        Long scheduleId = seats.getFirst().getSchedule().getId();
         eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
 
         long paymentExpiryMillis = paymentExpirySeconds * 1000L;
