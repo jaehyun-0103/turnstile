@@ -8,6 +8,8 @@ spring:
     url: jdbc:mysql://localhost:3307/turnstile?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root
     password: 1234
+    hikari:
+      connection-timeout: 3000 # HikariCP DB 커넥션 획득 대기 시간 3초로 제한 (기본값 30초)
 
   # 2. JPA 설정
   jpa:
@@ -23,6 +25,7 @@ spring:
     redis:
       host: localhost
       port: 6380
+      timeout: 2000 # Redis 응답 대기 시간 2초로 제한
 
 logging:
   level:
