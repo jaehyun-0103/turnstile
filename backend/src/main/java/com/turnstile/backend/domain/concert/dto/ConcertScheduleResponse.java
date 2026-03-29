@@ -1,6 +1,5 @@
 package com.turnstile.backend.domain.concert.dto;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
 
 import java.time.LocalDateTime;
@@ -8,7 +7,6 @@ import java.time.LocalDateTime;
 /**
  * 콘서트 회차 정보 응답 데이터입니다.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public record ConcertScheduleResponse(
         Long id,
         LocalDateTime date,

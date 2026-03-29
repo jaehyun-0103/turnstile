@@ -74,7 +74,7 @@ public class RedisConfig {
                         .allowIfSubType("java.lang")
                         .allowIfSubType("java.time")
                         .build(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
+                ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
         );
 
