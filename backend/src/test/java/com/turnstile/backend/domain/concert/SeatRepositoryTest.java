@@ -58,7 +58,7 @@ class SeatRepositoryTest {
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
 
         // when: CAS 쿼리로 점유 시도
-        int updatedRowCount = seatRepository.holdSeatConditionally(seat.getId(), userId, expiresAt);
+        int updatedRowCount = seatRepository.holdSeatsConditionally(List.of(seat.getId()), userId, expiresAt);
 
         // then: 업데이트 성공(1) 및 상태 변경 확인
         assertThat(updatedRowCount).isEqualTo(1);
@@ -78,7 +78,7 @@ class SeatRepositoryTest {
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
 
         // when: 다른 유저가 해당 좌석 점유 시도
-        int updatedRowCount = seatRepository.holdSeatConditionally(seat.getId(), latecomerUserId, expiresAt);
+        int updatedRowCount = seatRepository.holdSeatsConditionally(List.of(seat.getId()), latecomerUserId, expiresAt);
 
         // then: 업데이트 실패(0) 확인
         assertThat(updatedRowCount).isEqualTo(0);

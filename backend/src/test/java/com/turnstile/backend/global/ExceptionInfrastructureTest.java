@@ -55,6 +55,6 @@ class ExceptionInfrastructureTest {
         // then: HTTP 상태 코드, 내부 에러 코드, 메시지가 명세와 일치해야 함
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(response.getCode()).isEqualTo("S004");
-        assertThat(response.getMessage()).isEqualTo("이미 선택된 좌석입니다.");
+        assertThat(response.getMessage()).isEqualTo("이미 선택되었거나 판매 완료된 좌석입니다.");
     }
 }

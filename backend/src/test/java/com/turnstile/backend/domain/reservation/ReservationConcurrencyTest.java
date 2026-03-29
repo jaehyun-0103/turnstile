@@ -128,7 +128,7 @@ class ReservationConcurrencyTest {
     void should_rollback_entirely_when_one_of_consecutive_seats_is_already_held() {
         // given: 2번 좌석을 다른 유저가 이미 선점한 상태로 세팅
         transactionTemplate.execute(status -> {
-            seatRepository.holdSeatConditionally(testSeatId2, 999L, LocalDateTime.now().plusMinutes(5));
+            seatRepository.holdSeatsConditionally(List.of(testSeatId2), 999L, LocalDateTime.now().plusMinutes(5));
             return null;
         });
 

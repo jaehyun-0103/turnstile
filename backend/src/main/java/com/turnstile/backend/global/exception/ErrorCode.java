@@ -32,8 +32,7 @@ public enum ErrorCode {
     CONCERT_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "존재하지 않는 콘서트입니다."),
     SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "S002", "존재하지 않는 회차입니다."),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "S003", "존재하지 않는 좌석입니다."),
-    SEAT_ALREADY_HELD(HttpStatus.CONFLICT, "S004", "이미 선택된 좌석입니다."),
-    SEAT_ALREADY_SOLD(HttpStatus.CONFLICT, "S005", "이미 판매 완료된 좌석입니다."),
+    SEAT_ALREADY_HELD(HttpStatus.CONFLICT, "S004", "이미 선택되었거나 판매 완료된 좌석입니다."),
 
     // 예약 및 결제 도메인
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "예약 정보를 찾을 수 없습니다."),

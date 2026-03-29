@@ -114,13 +114,11 @@ public class ReservationService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusSeconds(holdTimeSeconds);
 
-        for (Long seatId : sortedSeatIds) {
-            int updatedRowCount = seatRepository.holdSeatConditionally(seatId, userId, expiresAt);
-
-            if (updatedRowCount == 0) {
-                log.warn("[Reservation] Reserve Seats | Fail - Seat Already Held (userId: {}, seatId: {})", userId, seatId);
-                throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD, "요청 좌석 ID: " + seatId);
-            }
+        int updatedRowCount = seatRepository.holdSeatsConditionally(sortedSeatIds, userId, expiresAt);
+        if (updatedRowCount != sortedSeatIds.size()) {
+            log.warn("[Reservation] Reserve Seats | Fail - CAS Mismatch (userId: {}, requested: {}, updated: {})",
+                    userId, sortedSeatIds.size(), updatedRowCount);
+            throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD);
         }
 
         User userRef = userRepository.getReferenceById(userId);
