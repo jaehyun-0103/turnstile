@@ -68,7 +68,7 @@ class SeatHoldSchedulerTest {
         transactionTemplate.execute(status -> {
             Seat seat = seatRepository.findById(testSeatId).orElseThrow();
             LocalDateTime pastExpiredTime = LocalDateTime.now().minusMinutes(1);
-            seatRepository.holdSeatConditionally(seat.getId(), testUser.getId(), pastExpiredTime);
+            seatRepository.holdSeatsConditionally(List.of(seat.getId()), testUser.getId(), pastExpiredTime);
 
             reservationRepository.save(Reservation.builder()
                     .groupId(testGroupId)
