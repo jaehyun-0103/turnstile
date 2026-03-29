@@ -55,7 +55,7 @@ public class QueueScheduler {
     /**
      * 주기적으로 활성 상태 유저 중 점유 시간이 만료된 유저를 정리합니다.
      */
-    @Scheduled(fixedDelay = 10000) // 10초마다 실행
+    @Scheduled(fixedDelay = 10000) // 이전 정리 작업이 완전히 끝난 후 10초 대기
     public void scheduleCleanup() {
         Set<String> activeConcerts = queueRedisRepository.getActiveConcerts();
         if (activeConcerts == null || activeConcerts.isEmpty()) {
