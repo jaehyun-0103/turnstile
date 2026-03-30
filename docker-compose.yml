@@ -13,8 +13,9 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --max-connections=1000
-      - --innodb_flush_log_at_trx_commit=2  # 개발용 성능 향상
-      - --sync_binlog=0                     # 개발용 성능 향상
+      - --innodb_flush_log_at_trx_commit=2
+      - --sync_binlog=0
+      - --default-time-zone=+09:00
     networks:
       - turnstile-net
     healthcheck:
@@ -36,7 +37,6 @@ services:
       "--appendonly", "yes",
       "--maxmemory", "512mb",
       "--maxmemory-policy", "noeviction",
-      "--save", "60", "1",
       "--tcp-keepalive", "60"
     ]
     networks:
@@ -46,6 +46,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  turnstile-api:
+    build: ./backend
+    container_name: turnstile-api
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/turnstile?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - turnstile-net
 
 volumes:
   mysql_data:
