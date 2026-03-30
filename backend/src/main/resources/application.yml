@@ -1,6 +1,8 @@
 spring:
   application:
     name: turnstile-api
+  profiles:
+    active: local
 
   # 1. MySQL 설정 (Docker: 3307 포트)
   datasource:
@@ -14,7 +16,7 @@ spring:
   # 2. JPA 설정
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update # 배포 시 수정
     properties:
       hibernate:
         format_sql: true
@@ -26,11 +28,6 @@ spring:
       host: localhost
       port: 6380
       timeout: 2000 # Redis 응답 대기 시간 2초로 제한
-
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace
 
 springdoc:
   swagger-ui:
@@ -50,5 +47,5 @@ queue:
 reservation:
   policy:
     max-seats-per-user: 4        # 유저 1명당 최대 예매 가능 좌석 수
-    hold-time-seconds: 300       # 좌석 임시 점유 유지 시간
+    hold-time-seconds: 330       # 좌석 임시 점유 유지 시간
     payment-ttl-seconds: 330     # 결제용 JWT 토큰 만료 시간
