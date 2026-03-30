@@ -1,6 +1,8 @@
 spring:
   application:
     name: turnstile-api
+  profiles:
+    active: local
 
   # 1. MySQL 설정 (Docker: 3307 포트)
   datasource:
@@ -14,7 +16,7 @@ spring:
   # 2. JPA 설정
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update # 배포 시 수정
     properties:
       hibernate:
         format_sql: true

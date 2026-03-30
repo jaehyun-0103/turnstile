@@ -54,6 +54,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - SPRING_PROFILES_ACTIVE=local # 배포 시 삭제
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/turnstile?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
