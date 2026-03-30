@@ -5,6 +5,8 @@ import com.turnstile.backend.domain.reservation.dto.MyReservationResponse;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.dto.ReservationResponse;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import java.util.List;
  * 콘서트 좌석 예약 및 예약 내역 조회를 처리하는 컨트롤러입니다.
  */
 @Slf4j
+@Tag(name = "5. Reservation", description = "콘서트 좌석 임시 점유 및 예약 내역 조회 API")
 @RestController
 @RequestMapping("/api/v1/reservations")
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class ReservationController {
     /**
      * 선택한 좌석들에 대해 임시 점유(예약)를 요청합니다.
      */
+    @Operation(summary = "좌석 임시 점유 (예약)", description = "요구 권한: **LEVEL 2 (QUEUE)** 이상\n\n선택한 좌석들을 5분 30초간 임시 점유(HOLD)하고, **LEVEL 3 (PAYMENT)** 토큰을 발급받습니다.")
     @PostMapping
     public ResponseEntity<ReservationResponse> reserveSeats(
             @LoginUser Long loginUserId,
@@ -45,6 +49,7 @@ public class ReservationController {
     /**
      * 로그인한 사용자의 전체 예약 내역을 조회합니다.
      */
+    @Operation(summary = "내 예약 내역 조회", description = "요구 권한: **LEVEL 2 (QUEUE)** 이상\n\n로그인한 사용자의 전체 예약 내역을 최신순으로 조회합니다.")
     @GetMapping("/my")
     public ResponseEntity<List<MyReservationResponse>> getMyReservations(@LoginUser Long userId) {
         log.info("[Reservation] API Request | Get My Reservations (userId: {})", userId);
