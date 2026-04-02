@@ -14,7 +14,7 @@ export const getMyBalance = async (): Promise<UserBalanceResponse> => {
 };
 
 /**
- * 특정 사용자의 계좌에 금액을 충전합니다. (시연용)
+ * 특정 사용자의 계좌에 금액을 충전합니다.
  */
 export const chargeBalance = async (userId: number, amount: number): Promise<UserBalanceResponse> => {
   const response = await apiClient.patch(`/api/v1/users/${userId}/balance`, { amount });
