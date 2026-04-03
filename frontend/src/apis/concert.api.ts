@@ -9,8 +9,7 @@ export interface ConcertResponse {
 
 export interface ConcertScheduleResponse {
   id: number;
-  concertId: number;
-  concertDate: string;
+  date: string;
   totalSeats: number;
 }
 
