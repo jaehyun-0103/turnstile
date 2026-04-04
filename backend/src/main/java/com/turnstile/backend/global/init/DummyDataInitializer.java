@@ -25,7 +25,7 @@ public class DummyDataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         // 이미 데이터가 존재하면 삽입 로직을 스킵하여 서버 재시작 시 중복 오류 방지
-        Integer userCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user", Integer.class);
+        Integer userCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
         if (userCount != null && userCount > 0) {
             log.info("[Global] Dummy Data Init | Skipped (reason: Data already exists)");
             return;
@@ -37,7 +37,7 @@ public class DummyDataInitializer implements ApplicationRunner {
         jdbcTemplate.execute("SET SESSION cte_max_recursion_depth = 10000");
 
         // 유저 1만 명 삽입
-        String insertUsersSql = "INSERT INTO user (username, name, balance, created_at, updated_at) " +
+        String insertUsersSql = "INSERT INTO users (username, name, balance, created_at, updated_at) " +
                 "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 10000) " +
                 "SELECT CONCAT('user', n), CONCAT('테스터', n), IF(n <= 9000, 500000, 0), NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertUsersSql);
