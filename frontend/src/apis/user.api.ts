@@ -6,7 +6,7 @@ interface UserBalanceResponse {
 }
 
 /**
- * 로그인한 사용자의 현재 잔액을 조회합니다. (IDENTITY 토큰 필요)
+ * 현재 로그인한 유저의 잔액 정보 조회
  */
 export const getMyBalance = async (): Promise<UserBalanceResponse> => {
   const response = await apiClient.get("/api/v1/users/me/balance");
@@ -14,7 +14,7 @@ export const getMyBalance = async (): Promise<UserBalanceResponse> => {
 };
 
 /**
- * 특정 사용자의 계좌에 금액을 충전합니다.
+ * 유저 잔액 충전
  */
 export const chargeBalance = async (userId: number, amount: number): Promise<UserBalanceResponse> => {
   const response = await apiClient.patch(`/api/v1/users/${userId}/balance`, { amount });

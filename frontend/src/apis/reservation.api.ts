@@ -23,13 +23,18 @@ export interface MyReservationResponse {
   reservedAt: string;
 }
 
-// 다중 좌석 점유 시 발생하는 DB 레벨의 데드락을 방지하기 위해 호출부에서 seatIds를 오름차순 정렬하여 전달해야 함
+/**
+ * 좌석 임시 점유 요청
+ * @important 데드락 방지를 위해 호출부에서 seatIds 오름차순 정렬 필수
+ */
 export const reserveSeats = async (request: ReservationRequest): Promise<ReservationResponse> => {
   const response = await apiClient.post("/api/v1/reservations", request);
   return response.data;
 };
 
-// IDENTITY 토큰만으로 조회가 가능한 엔드포인트
+/**
+ * 내 예매 내역 목록 조회
+ */
 export const getMyReservations = async (): Promise<MyReservationResponse[]> => {
   const response = await apiClient.get("/api/v1/reservations/my");
   return response.data;

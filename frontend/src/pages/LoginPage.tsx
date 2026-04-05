@@ -3,11 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../apis/auth.api";
 import { useAuthStore } from "../store/useAuthStore";
 
+/**
+ * 사용자 로그인을 처리하고 IDENTITY 권한 토큰을 획득하는 페이지 컴포넌트입니다.
+ */
 export const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
   const navigate = useNavigate();
+
+  // Zustand 스토어: 성공 시 전역 인증 상태 업데이트용
   const { setIdentityToken, setUserInfo } = useAuthStore();
 
   const handleLogin = async (e: FormEvent) => {
@@ -16,10 +20,10 @@ export const LoginPage = () => {
 
     try {
       setIsLoading(true);
-      // 백엔드 API 호출
+      // 백엔드 로그인 API 호출 (LEVEL 1 인가 토큰 발급)
       const response = await login({ username });
 
-      // Zustand 스토어에 토큰 및 유저 정보 저장 (SessionStorage 자동 연동)
+      // Zustand 스토어에 토큰 및 유저 정보 저장 (SessionStorage 자동 연동됨)
       setIdentityToken(response.accessToken);
       setUserInfo({
         userId: response.userId,
@@ -28,7 +32,7 @@ export const LoginPage = () => {
         balance: response.balance,
       });
 
-      // 로그인 성공 시 메인 화면(콘서트 목록)으로 이동
+      // 인증 완료 시 메인 화면으로 이동
       navigate("/");
     } catch (error) {
       console.error("로그인 실패:", error);
@@ -44,6 +48,7 @@ export const LoginPage = () => {
         <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">Turnstile</h1>
         <p className="text-center text-gray-500 mb-8">대규모 트래픽 제어 예매 시스템</p>
 
+        {/* 로그인 폼 영역 */}
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">

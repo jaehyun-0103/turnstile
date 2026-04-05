@@ -8,21 +8,27 @@ interface UserInfo {
   balance: number;
 }
 
-// 백엔드의 3-Tier 인가 정책과 유저 정보를 프론트엔드에 동기화하는 전역 스토어
+/**
+ * 백엔드의 3-Tier 하이브리드 인가 정책(IDENTITY, QUEUE, PAYMENT)과
+ * 유저 기본 정보를 클라이언트 전역에서 동기화하는 Zustand 스토어입니다.
+ */
 interface AuthState {
-  identityToken: string | null;
-  queueToken: string | null;
-  paymentToken: string | null;
+  // 3-Tier 토큰 계층
+  identityToken: string | null; // LEVEL 1: 로그인 및 기본 API 호출용
+  queueToken: string | null; // LEVEL 2: 대기열 통과 및 좌석 조회/점유용
+  paymentToken: string | null; // LEVEL 3: 좌석 점유 성공 후 1회성 결제용
+
   userInfo: UserInfo | null;
 
+  // 상태 업데이트 메서드
   setIdentityToken: (token: string) => void;
   setQueueToken: (token: string) => void;
   setPaymentToken: (token: string) => void;
   setUserInfo: (user: UserInfo) => void;
   updateBalance: (newBalance: number) => void;
 
+  // 세션 제어 메서드
   clearAllTokens: () => void;
-  // 예매 완료 또는 취소(롤백) 시 기본 로그인 상태는 유지하고 예매/결제용 고권한 토큰만 회수하여 세션을 보호
   clearCheckoutTokens: () => void;
 }
 
@@ -43,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
           userInfo: state.userInfo ? { ...state.userInfo, balance: newBalance } : null,
         })),
 
+      // 로그아웃 시 모든 권한과 정보를 초기화
       clearAllTokens: () =>
         set({
           identityToken: null,
@@ -50,11 +57,12 @@ export const useAuthStore = create<AuthState>()(
           paymentToken: null,
           userInfo: null,
         }),
-      clearCheckoutTokens: () => set({ queueToken: null, paymentToken: null }),
+
+      clearCheckoutTokens: () => set({ paymentToken: null }),
     }),
     {
       name: "turnstile-auth-storage",
-      // 새로고침 시 대기열 튕김을 방지하되 브라우저 탭 종료 시 데이터가 휘발
+      // 브라우저 종료 시 토큰이 휘발되도록 sessionStorage를 사용하여 보안 강화
       storage: createJSONStorage(() => sessionStorage),
     },
   ),
