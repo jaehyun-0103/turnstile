@@ -10,9 +10,9 @@ export const SeatSelectionPage = () => {
   const navigate = useNavigate();
   const { setPaymentToken } = useAuthStore();
 
-  const state = location.state as { scheduleId?: number; concertId?: number } | null;
+  const state = location.state as { scheduleId?: number; concertId?: number } | undefined;
   const scheduleId = state?.scheduleId;
-  const concertId = state?.concertId || 1; // 대기열 통과 시 넘겨받은 concertId (테스트용 폴백 포함)
+  const concertId = state?.concertId || 1;
 
   const [seats, setSeats] = useState<SeatResponse[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
@@ -75,12 +75,13 @@ export const SeatSelectionPage = () => {
       // 점유 성공 시 LEVEL 3 결제 권한 부여
       setPaymentToken(res.accessToken);
 
-      // 결제 타이머 동기화를 위해 백엔드의 만료 시각(expiredAt)을 라우트 상태로 전달함
+      // 결제 페이지 라우팅 시 백엔드 검증에 필요한 concertId를 누락 없이 전달함
       navigate("/payment", {
         state: {
           groupId: res.groupId,
           expiredAt: res.expiredAt,
           totalAmount: seats.filter((s) => selectedSeatIds.includes(s.seatId)).reduce((sum, s) => sum + s.price, 0),
+          concertId: concertId,
         },
       });
     } catch (error) {

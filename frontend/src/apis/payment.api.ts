@@ -1,15 +1,16 @@
 import { apiClient } from "./apiClient";
 
 export interface PaymentRequest {
-  concertId: number;
   groupId: string;
-  totalAmount: number;
+  amount: number;
+  concertId: number;
 }
 
 export interface PaymentResponse {
   paymentId: number;
   status: string;
   paidAt: string;
+  balance: number;
 }
 
 // 3-Tier 인가 정책에 따라 apiClient 인터셉터에서 PAYMENT 토큰이 자동으로 주입되어 검증됨
