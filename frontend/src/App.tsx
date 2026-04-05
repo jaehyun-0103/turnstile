@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from "react-router-dom";
 import { GNB } from "./components/GNB";
 import { LoginPage } from "./pages/LoginPage";
 import { MyPage } from "./pages/MyPage";

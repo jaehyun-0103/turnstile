@@ -16,10 +16,10 @@ export const PaymentPage = () => {
   const totalAmount = state?.totalAmount || 0;
   const concertId = state?.concertId;
 
-  const [timeLeft, setTimeLeft] = useState<string>("05:30");
-  const [isExpired, setIsExpired] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isPaying, setIsPaying] = useState<boolean>(false);
+  const [timeLeft, setTimeLeft] = useState("05:30");
+  const [isExpired, setIsExpired] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPaying, setIsPaying] = useState(false);
 
   const fetchBalance = useCallback(async () => {
     try {

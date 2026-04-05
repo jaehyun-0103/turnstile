@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { getMyBalance, chargeBalance } from "../apis/user.api";
 import { getMyReservations, type MyReservationResponse } from "../apis/reservation.api";
@@ -8,7 +8,7 @@ export const MyPage = () => {
   const [chargeAmount, setChargeAmount] = useState<number | "">("");
   const [isLoading, setIsLoading] = useState(false);
   const [reservations, setReservations] = useState<MyReservationResponse[]>([]);
-  const [isResLoading, setIsResLoading] = useState<boolean>(true);
+  const [isReservationsLoading, setIsReservationsLoading] = useState(true);
 
   // 컴포넌트 마운트 시 최신 잔액 페칭
   useEffect(() => {
@@ -28,7 +28,7 @@ export const MyPage = () => {
       } catch (error) {
         console.error("예약 내역 조회 실패:", error);
       } finally {
-        setIsResLoading(false);
+        setIsReservationsLoading(false);
       }
     };
 
@@ -36,7 +36,7 @@ export const MyPage = () => {
     fetchReservations();
   }, [updateBalance]);
 
-  const handleCharge = async (e: React.FormEvent) => {
+  const handleCharge = async (e: FormEvent) => {
     e.preventDefault();
     if (!userInfo) return alert("로그인 정보가 없습니다.");
     if (!chargeAmount || chargeAmount <= 0) return alert("올바른 금액을 입력해주세요.");
@@ -118,7 +118,7 @@ export const MyPage = () => {
           <h2 className="text-lg font-semibold text-gray-700 mb-4">내 예매 내역</h2>
 
           <div className="flex-1 overflow-y-auto max-h-[500px] pr-2">
-            {isResLoading ? (
+            {isReservationsLoading ? (
               <div className="flex justify-center items-center h-40 text-gray-400">내역을 불러오는 중...</div>
             ) : reservations.length === 0 ? (
               <div className="flex flex-col justify-center items-center h-40 text-gray-400">

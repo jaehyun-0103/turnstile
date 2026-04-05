@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../apis/auth.api";
 import { useAuthStore } from "../store/useAuthStore";
@@ -10,7 +10,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const { setIdentityToken, setUserInfo } = useAuthStore();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!username.trim()) return alert("아이디를 입력해주세요.");
 

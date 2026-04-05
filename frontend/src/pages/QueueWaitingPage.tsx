@@ -13,7 +13,7 @@ export const QueueWaitingPage = () => {
   const concertId = state?.concertId;
   const scheduleId = state?.scheduleId;
 
-  const [rank, setRank] = useState<number>(0);
+  const [rank, setRank] = useState(0);
   const [status, setStatus] = useState<"ENTRY" | "WAITING" | "ACTIVE">("ENTRY");
 
   // 브라우저 환경의 setInterval 반환값을 저장하여 컴포넌트 언마운트 시 메모리 누수를 방지함
