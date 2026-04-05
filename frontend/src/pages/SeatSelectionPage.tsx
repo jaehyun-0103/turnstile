@@ -5,29 +5,34 @@ import { reserveSeats } from "../apis/reservation.api";
 import { useAuthStore } from "../store/useAuthStore";
 import { isAxiosError } from "axios";
 
+/**
+ * 특정 회차의 좌석 배치도를 조회하고, 원하는 좌석을 선택하여 임시 점유(예약)를 요청하는 페이지입니다.
+ * 성공 시 예약 확정을 위한 1회성 PAYMENT 토큰을 획득합니다.
+ */
 export const SeatSelectionPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { setPaymentToken } = useAuthStore();
 
-  const state = location.state as { scheduleId?: number; concertId?: number } | undefined;
+  const state = location.state as { scheduleId?: number; concertId?: number } | null;
   const scheduleId = state?.scheduleId;
-  const concertId = state?.concertId || 1;
+  const concertId = state?.concertId;
 
   const [seats, setSeats] = useState<SeatResponse[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isReserving, setIsReserving] = useState(false);
 
-  // 동시성 경합 실패 시 즉각적인 화면 동기화를 위해 좌석 조회 로직을 분리함
+  // 동시성 경합 실패 시 즉각적인 화면 동기화를 위해 좌석 조회 로직을 분리
   const fetchSeats = useCallback(async () => {
     if (!scheduleId) return;
     try {
       setIsLoading(true);
       const res = await getSeats(scheduleId);
+      console.log(`[Seat] Fetch List | Success - 좌석 로드 완료 (Count: ${res.seats.length})`);
       setSeats(res.seats);
     } catch (error) {
-      console.error("좌석 정보 조회 실패:", error);
+      console.error("[Seat] Fetch List | Error - 좌석 정보 조회 실패", error);
       alert("좌석 정보를 불러오는 데 실패했습니다.");
     } finally {
       setIsLoading(false);
@@ -35,36 +40,38 @@ export const SeatSelectionPage = () => {
   }, [scheduleId]);
 
   useEffect(() => {
-    if (!scheduleId) {
+    // scheduleId와 concertId 둘 다 없을 경우 방어 (비정상 접근 차단)
+    if (!scheduleId || !concertId) {
       alert("잘못된 접근입니다.");
       navigate("/");
       return;
     }
     fetchSeats();
-  }, [scheduleId, fetchSeats]);
+  }, [scheduleId, concertId, fetchSeats, navigate]);
 
+  // 다중 좌석 선택 토글 (백엔드 제약조건에 맞춰 클라이언트단 최대 4석 제한 방어)
   const toggleSeatSelection = (seatId: number) => {
     setSelectedSeatIds((prev) => {
       if (prev.includes(seatId)) {
         return prev.filter((id) => id !== seatId);
       }
 
-      // 백엔드 policy.max-seats-per-user 제약조건 동기화
       if (prev.length >= 4) {
         alert("최대 4석까지만 예매할 수 있습니다.");
         return prev;
       }
-      return [...prev, seatId];
+      return [...prev, seatId]; // 새로운 좌석 선택 추가
     });
   };
 
+  // 선택한 좌석 임시 점유(예약) 요청 로직
   const handleReservation = async () => {
-    if (selectedSeatIds.length === 0) return;
+    if (selectedSeatIds.length === 0 || !concertId) return;
 
     try {
       setIsReserving(true);
 
-      // 다중 좌석 예매 시 발생하는 DB Row Lock 데드락을 방어하기 위한 필수 오름차순 정렬
+      // 백엔드 DB의 Row Lock 순서를 강제하여 교착 상태(Deadlock)를 방어하기 위한 오름차순 정렬
       const sortedSeatIds = [...selectedSeatIds].sort((a, b) => a - b);
 
       const res = await reserveSeats({
@@ -72,10 +79,11 @@ export const SeatSelectionPage = () => {
         seatIds: sortedSeatIds,
       });
 
-      // 점유 성공 시 LEVEL 3 결제 권한 부여
+      console.log("[Reservation] Reserve Seats | Success - 좌석 임시 점유 성공 (GroupId 발급)");
+      // 좌석 점유 성공 시에만 제공되는 최종 결제용 1회성 권한(PAYMENT) 토큰 등록
       setPaymentToken(res.accessToken);
 
-      // 결제 페이지 라우팅 시 백엔드 검증에 필요한 concertId를 누락 없이 전달함
+      // 결제 페이지 라우팅 (결제 만료 시간 및 총액 파라미터 전달)
       navigate("/payment", {
         state: {
           groupId: res.groupId,
@@ -87,8 +95,7 @@ export const SeatSelectionPage = () => {
     } catch (error) {
       if (isAxiosError(error) && error.response) {
         const errorCode = error.response.data?.code;
-
-        // 타인에 의한 선점(CAS 실패) 에러 발생 시 Fail-Fast 및 화면 최신화
+        // 타인에 의해 찰나의 순간 선점된 경우(CAS 실패 S004) 화면 최신화 및 재시도 유도
         if (errorCode === "S004") {
           alert("이미 선택되었거나 예매 중인 좌석이 포함되어 있습니다.\n좌석표를 다시 불러옵니다.");
           setSelectedSeatIds([]);
@@ -96,7 +103,7 @@ export const SeatSelectionPage = () => {
           return;
         }
       }
-      console.error("좌석 점유 실패:", error);
+      console.error("[Reservation] Reserve Seats | Error - 좌석 점유 실패", error);
       alert("좌석 점유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsReserving(false);
@@ -109,7 +116,7 @@ export const SeatSelectionPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto py-12 px-4 flex flex-col md:flex-row gap-8">
-      {/* 왼쪽: 좌석 배치도 영역 */}
+      {/* 좌측: 무대(STAGE) 및 좌석 배치도 그리드 영역 */}
       <div className="flex-1 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">좌석 선택</h1>
@@ -124,7 +131,7 @@ export const SeatSelectionPage = () => {
         {/* STAGE 표시 */}
         <div className="w-full bg-gray-200 text-gray-500 text-center py-4 rounded-xl mb-12 font-bold tracking-[0.5em]">STAGE</div>
 
-        {/* 좌석 그리드 (5000석 규모를 렌더링하기 위한 촘촘한 Flex 래핑) */}
+        {/* 촘촘한 Flex 래핑을 활용한 좌석 그리드 렌더링 */}
         <div className="flex flex-wrap gap-2 justify-center max-h-[500px] overflow-y-auto p-2">
           {seats.map((seat) => {
             const isSelected = selectedSeatIds.includes(seat.seatId);
@@ -144,7 +151,7 @@ export const SeatSelectionPage = () => {
                 `}
                 title={`좌석 ${seat.seatNo}번 (${seat.price.toLocaleString()}원)`}
               >
-                {/* 선택된 좌석이나 예매 가능한 좌석만 번호 표시, 나머지는 빈칸 */}
+                {/* 비어있거나 내가 선택한 좌석만 번호 노출, 판매/점유 중인 좌석은 색상으로만 구분 */}
                 {(isAvailable || isSelected) && seat.seatNo}
               </button>
             );
@@ -152,7 +159,7 @@ export const SeatSelectionPage = () => {
         </div>
       </div>
 
-      {/* 오른쪽: 선택 정보 및 결제 진행 영역 */}
+      {/* 우측: 상태 범례, 선택 좌석 정보 및 결제 진행 영역 */}
       <div className="w-full md:w-96 flex flex-col gap-6">
         {/* 범례 (Legend) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between">
@@ -174,7 +181,7 @@ export const SeatSelectionPage = () => {
           </div>
         </div>
 
-        {/* 선택 내역 */}
+        {/* 선택 내역 및 금액 합산 내역 */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col">
           <h2 className="text-lg font-bold text-gray-800 mb-4">선택 좌석 내역</h2>
           <div className="flex-1">

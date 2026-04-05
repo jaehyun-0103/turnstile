@@ -1,23 +1,28 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { getMyBalance, chargeBalance } from "../apis/user.api";
 import { getMyReservations, type MyReservationResponse } from "../apis/reservation.api";
 
+/**
+ * 사용자의 기본 정보, 실시간 잔액 동기화 및 예약(예매) 내역을 관리하는 마이페이지 컴포넌트입니다.
+ */
 export const MyPage = () => {
   const { userInfo, updateBalance } = useAuthStore();
+
+  // 상태 관리: 잔액 충전 입력값 및 예매 내역
   const [chargeAmount, setChargeAmount] = useState<number | "">("");
   const [isLoading, setIsLoading] = useState(false);
   const [reservations, setReservations] = useState<MyReservationResponse[]>([]);
-  const [isResLoading, setIsResLoading] = useState<boolean>(true);
+  const [isReservationsLoading, setIsReservationsLoading] = useState(true);
 
-  // 컴포넌트 마운트 시 최신 잔액 페칭
+  // 컴포넌트 마운트 시 최신 잔액 및 예약 내역 Fetching
   useEffect(() => {
     const fetchBalance = async () => {
       try {
         const res = await getMyBalance();
         updateBalance(res.balance);
       } catch (error) {
-        console.error("잔액 조회 실패:", error);
+        console.error("[User] Fetch Balance | Error - 잔액 조회 실패", error);
       }
     };
 
@@ -26,9 +31,9 @@ export const MyPage = () => {
         const res = await getMyReservations();
         setReservations(res);
       } catch (error) {
-        console.error("예약 내역 조회 실패:", error);
+        console.warn("[Reservation] Fetch My List | Unauthorized or Error - 예매 내역 접근 권한 없음", error);
       } finally {
-        setIsResLoading(false);
+        setIsReservationsLoading(false);
       }
     };
 
@@ -36,22 +41,21 @@ export const MyPage = () => {
     fetchReservations();
   }, [updateBalance]);
 
-  const handleCharge = async (e: React.FormEvent) => {
+  // 잔액 충전 폼 제출 핸들러 (시연/테스트용)
+  const handleCharge = async (e: FormEvent) => {
     e.preventDefault();
     if (!userInfo) return alert("로그인 정보가 없습니다.");
     if (!chargeAmount || chargeAmount <= 0) return alert("올바른 금액을 입력해주세요.");
 
     try {
       setIsLoading(true);
-      // 충전 API 호출
       const res = await chargeBalance(userInfo.userId, Number(chargeAmount));
 
-      // 스토어 업데이트 및 알림
-      updateBalance(res.balance);
+      updateBalance(res.balance); // 스토어 잔액 업데이트
       alert(`${chargeAmount.toLocaleString()}원이 충전되었습니다.`);
       setChargeAmount("");
     } catch (error) {
-      console.error("충전 실패:", error);
+      console.error("[User] Charge Balance | Error - 충전 실패", error);
       alert("충전에 실패했습니다.");
     } finally {
       setIsLoading(false);
@@ -65,7 +69,7 @@ export const MyPage = () => {
       <h1 className="text-2xl font-bold text-gray-800">마이페이지</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* 왼쪽: 내 정보 및 잔액 */}
+        {/* 좌측: 내 정보 및 잔액 관리 영역 */}
         <div className="flex flex-col gap-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
@@ -90,13 +94,14 @@ export const MyPage = () => {
             </div>
           </div>
 
+          {/* 잔액 충전 폼 */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-700 mb-4">잔액 충전 (테스트용)</h2>
             <form onSubmit={handleCharge} className="flex gap-4">
               <input
                 type="number"
                 value={chargeAmount}
-                onChange={(e) => setChargeAmount(Number(e.target.value))}
+                onChange={(e) => setChargeAmount(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="충전할 금액 입력"
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
@@ -113,24 +118,25 @@ export const MyPage = () => {
           </div>
         </div>
 
-        {/* 오른쪽: 내 예매 내역 */}
+        {/* 우측: 내 예매 내역 영역 */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">내 예매 내역</h2>
 
           <div className="flex-1 overflow-y-auto max-h-[500px] pr-2">
-            {isResLoading ? (
+            {isReservationsLoading ? (
               <div className="flex justify-center items-center h-40 text-gray-400">내역을 불러오는 중...</div>
             ) : reservations.length === 0 ? (
-              <div className="flex flex-col justify-center items-center h-40 text-gray-400">
+              
+              <div className="flex flex-col justify-center items-center h-40 text-gray-400 px-4 text-center">
+                {/* 예매 내역이 없거나, 접근 권한(QUEUE 토큰)이 없는 평상시 상태일 때의 안내 UI */}
                 <svg className="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  ></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                 </svg>
-                <p>예매한 내역이 없습니다.</p>
+                <p>조회된 예매 내역이 없습니다.</p>
+                <p className="text-xs mt-3 text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                  💡 <strong>보안 정책 안내</strong><br />
+                  예매 내역은 대기열 통과 후 (예매 활성 상태)에만 확인이 가능합니다.
+                </p>
               </div>
             ) : (
               <ul className="flex flex-col gap-4">
