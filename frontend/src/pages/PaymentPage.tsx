@@ -1,14 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMyBalance } from "../apis/user.api";
+import { confirmPayment } from "../apis/payment.api";
 import { useAuthStore } from "../store/useAuthStore";
+import { isAxiosError } from "axios";
 
 export const PaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setPaymentToken, userInfo, updateBalance } = useAuthStore();
+  const { setPaymentToken, userInfo, updateBalance, clearCheckoutTokens } = useAuthStore();
 
-  // null 대신 undefined 사용, 백엔드 검증을 위한 concertId 추가 수신
   const state = location.state as { groupId?: string; expiredAt?: string; totalAmount?: number; concertId?: number } | undefined;
   const groupId = state?.groupId;
   const expiredAt = state?.expiredAt;
@@ -18,6 +19,7 @@ export const PaymentPage = () => {
   const [timeLeft, setTimeLeft] = useState<string>("05:30");
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isPaying, setIsPaying] = useState<boolean>(false);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -68,7 +70,7 @@ export const PaymentPage = () => {
       if (expired) {
         clearInterval(timerId);
         alert("결제 시간이 만료되어 예매가 취소되었습니다.");
-        setPaymentToken(""); // null 대신 빈 문자열로 토큰 폐기 처리
+        clearCheckoutTokens(); // 시간 만료 시 토큰 즉시 폐기
         navigate("/");
       }
     }, 1000);
@@ -76,8 +78,46 @@ export const PaymentPage = () => {
     return () => clearInterval(timerId);
   }, [groupId, expiredAt, concertId, navigate, setPaymentToken, fetchBalance]);
 
-  const handlePayment = () => {
-    alert("결제 API 연동 전입니다. (3번 커밋에서 구현 예정)");
+  const handlePayment = async () => {
+    if (!groupId || !concertId) return;
+
+    try {
+      setIsPaying(true);
+      const res = await confirmPayment({
+        concertId,
+        groupId,
+        amount: totalAmount,
+      });
+
+      // 결제 성공 시 잔액 동기화 및 토큰 회수
+      updateBalance(res.balance);
+      clearCheckoutTokens();
+
+      alert("결제가 성공적으로 완료되었습니다!");
+
+      // 결제 완료 후 마이페이지(내 예약 확인)로 이동
+      navigate("/mypage");
+    } catch (error) {
+      if (isAxiosError(error) && error.response) {
+        const errorCode = error.response.data?.code;
+        const errorMessage = error.response.data?.message;
+
+        // 잔액 부족, 시간 초과 등 백엔드 비즈니스 예외 처리
+        if (errorCode === "S002") {
+          alert("잔액이 부족합니다. 결제가 취소되었습니다.");
+        } else {
+          alert(errorMessage || "결제 중 오류가 발생하여 예매가 취소되었습니다.");
+        }
+      } else {
+        alert("네트워크 오류가 발생했습니다.");
+      }
+
+      // 결제 실패 시 무조건 예매 권한을 회수하고 메인으로 강제 롤백 (Fail-Fast)
+      clearCheckoutTokens();
+      navigate("/");
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const currentBalance = userInfo?.balance ?? 0;
@@ -122,20 +162,20 @@ export const PaymentPage = () => {
 
           <button
             onClick={handlePayment}
-            disabled={isExpired || !isBalanceSufficient}
+            disabled={isExpired || !isBalanceSufficient || isPaying}
             className={`w-full py-4 rounded-xl font-bold text-lg transition ${
-              isExpired || !isBalanceSufficient
+              isExpired || !isBalanceSufficient || isPaying
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : "bg-blue-600 text-white hover:bg-blue-700 shadow-md"
             }`}
           >
-            {isBalanceSufficient ? `${totalAmount.toLocaleString()}원 결제하기` : "잔액 부족"}
+            {isPaying ? "결제 처리 중..." : isBalanceSufficient ? `${totalAmount.toLocaleString()}원 결제하기` : "잔액 부족"}
           </button>
 
           <div className="mt-4 text-center">
             <button
               onClick={() => {
-                setPaymentToken(""); // null 제거
+                clearCheckoutTokens(); // 취소 시에도 확실한 토큰 회수
                 navigate(-1);
               }}
               className="text-gray-400 hover:text-gray-600 text-sm font-medium underline"
