@@ -5,6 +5,7 @@ import { MyPage } from "./pages/MyPage";
 import { ConcertListPage } from "./pages/ConcertListPage";
 import { ProtectedRoute } from './router/ProtectedRoute';
 import { QueueWaitingPage } from "./pages/QueueWaitingPage";
+import { SeatSelectionPage } from "./pages/SeatSelectionPage";
 
 function App() {
   return (
@@ -24,18 +25,8 @@ function App() {
             <Route path="/" element={<ConcertListPage />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/queue" element={<QueueWaitingPage />} />
-
-            {/* 후속 이슈에서 구현될 좌석 선택 페이지의 라우트 충돌을 방지하기 위한 임시 렌더링 영역 */}
-            <Route
-              path="/seats"
-              element={
-                <div className="flex items-center justify-center h-[80vh]">
-                  <div className="p-10 bg-white rounded-2xl shadow-sm border border-gray-100 text-center text-xl font-bold text-gray-700">
-                    좌석 선택 페이지 (개발 예정)
-                  </div>
-                </div>
-              }
-            />
+            <Route path="/seats" element={<SeatSelectionPage />} />
+            <Route path="/payment" element={<div className="p-10 text-center font-bold">결제 화면 이동 성공!</div>} />
           </Route>
 
           {/* 정의되지 않은 잘못된 경로 접근 시 기본 화면으로 강제 리다이렉트하여 404 이탈을 방어함 */}
