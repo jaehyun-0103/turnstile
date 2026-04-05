@@ -52,9 +52,11 @@ apiClient.interceptors.response.use(
       if (status === 401) {
         // 예매/결제 도메인에서 발생한 단기 토큰 만료인 경우
         if (url.startsWith("/api/v1/reservations") || url.startsWith("/api/v1/payments") || url.startsWith("/api/v1/schedules")) {
+          console.warn(`[Network] Interceptor | 401 Unauthorized - 예매/결제 단기 토큰 만료 처리 (URL: ${url})`);
           // 전체 로그아웃을 방지하고 해당 1회성/단기 토큰만 안전하게 파기
           useAuthStore.getState().clearCheckoutTokens();
         } else {
+          console.warn(`[Network] Interceptor | 401 Unauthorized - 메인 세션 만료, 강제 로그아웃 (URL: ${url})`);
           // 기본 로그인(IDENTITY) 토큰 자체가 만료된 경우에만 전체 세션 초기화 및 로그인 화면으로 강제 이동
           useAuthStore.getState().clearAllTokens();
           window.location.href = "/login";

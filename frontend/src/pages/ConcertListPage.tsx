@@ -25,7 +25,7 @@ export const ConcertListPage = () => {
         const data = await getConcerts();
         setConcerts(data);
       } catch (error) {
-        console.error("콘서트 목록 조회 실패:", error);
+        console.error("[Concert] Fetch List | Error - 콘서트 목록 조회 실패", error);
       } finally {
         setIsLoading(false);
       }
@@ -52,7 +52,7 @@ export const ConcertListPage = () => {
       const data = await getConcertSchedules(concert.id);
       setSchedules(data);
     } catch (error) {
-      console.error("회차 목록 조회 실패:", error);
+      console.error("[Concert] Fetch Schedules | Error - 회차 목록 조회 실패", error);
     } finally {
       setIsScheduleLoading(false);
     }

@@ -32,6 +32,7 @@ export const LoginPage = () => {
         balance: response.balance,
       });
 
+      console.log(`[Auth] Login | Success - 환영합니다, ${response.name}님`);
       // 인증 완료 시 메인 화면으로 이동
       navigate("/");
     } catch (error) {

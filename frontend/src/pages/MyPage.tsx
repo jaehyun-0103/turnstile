@@ -22,7 +22,7 @@ export const MyPage = () => {
         const res = await getMyBalance();
         updateBalance(res.balance);
       } catch (error) {
-        console.error("잔액 조회 실패:", error);
+        console.error("[User] Fetch Balance | Error - 잔액 조회 실패", error);
       }
     };
 
@@ -31,7 +31,7 @@ export const MyPage = () => {
         const res = await getMyReservations();
         setReservations(res);
       } catch (error) {
-        console.error("예약 내역 조회 실패:", error);
+        console.warn("[Reservation] Fetch My List | Unauthorized or Error - 예매 내역 접근 권한 없음", error);
       } finally {
         setIsReservationsLoading(false);
       }
@@ -55,7 +55,7 @@ export const MyPage = () => {
       alert(`${chargeAmount.toLocaleString()}원이 충전되었습니다.`);
       setChargeAmount("");
     } catch (error) {
-      console.error("충전 실패:", error);
+      console.error("[User] Charge Balance | Error - 충전 실패", error);
       alert("충전에 실패했습니다.");
     } finally {
       setIsLoading(false);

@@ -76,6 +76,7 @@ export const PaymentPage = () => {
     const timerId = setInterval(() => {
       const expired = updateTimer();
       if (expired) {
+        console.warn("[Payment] Timer | Expired - 결제 제한 시간 만료로 인한 세션 롤백");
         clearInterval(timerId);
         alert("결제 시간이 만료되어 예매가 취소되었습니다.");
 
@@ -101,6 +102,7 @@ export const PaymentPage = () => {
         amount: totalAmount,
       });
 
+      console.log("[Payment] Confirm | Success - 결제 확정 및 좌석 SOLD 처리 완료");
       // 결제 성공 시 잔액 동기화 및 보안을 위한 토큰 즉각 회수
       updateBalance(res.balance);
       clearCheckoutTokens();
@@ -114,11 +116,14 @@ export const PaymentPage = () => {
 
         // 잔액 부족, 중복 결제 등 백엔드 비즈니스 예외 세분화 처리
         if (errorCode === "S002") {
+          console.warn("[Payment] Confirm | Reject - 잔액 부족 (S002)");
           alert("잔액이 부족합니다. 결제가 취소되었습니다.");
         } else {
+          console.error(`[Payment] Confirm | Error - ${errorMessage} (${errorCode})`);
           alert(errorMessage || "결제 중 오류가 발생하여 예매가 취소되었습니다.");
         }
       } else {
+        console.error("[Payment] Confirm | Error - 네트워크/알 수 없는 오류", error);
         alert("네트워크 오류가 발생했습니다.");
       }
 

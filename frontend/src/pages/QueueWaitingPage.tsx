@@ -42,6 +42,7 @@ export const QueueWaitingPage = () => {
 
         // ACTIVE 전환 및 토큰 발급 완료 시
         if (statusRes.status === "ACTIVE" && statusRes.accessToken) {
+          console.log("[Queue] Polling | ACTIVE - 대기열 통과 및 QUEUE 토큰 발급 완료");
           if (intervalRef.current) clearInterval(intervalRef.current);
           setStatus("ACTIVE");
 
@@ -54,7 +55,7 @@ export const QueueWaitingPage = () => {
           }, 1500);
         }
       } catch (error) {
-        console.error("대기열 상태 확인 실패:", error);
+        console.error("[Queue] Polling | Error - 대기열 상태 확인 실패", error);
       }
     };
 
@@ -69,16 +70,19 @@ export const QueueWaitingPage = () => {
 
         // 대기 인원이 없어 즉시 ACTIVE 상태를 반환받은 경우
         if (entryRes.status === "ACTIVE") {
+          console.log("[Queue] Enter | ACTIVE - 대기열 프리패스 (대기 인원 없음)");
           checkStatus(); // 토큰을 받기 위해 Status API 즉시 1회 호출
           return;
         }
+
+        console.log(`[Queue] Enter | WAITING - 대기열 진입 (Rank: ${entryRes.rank})`);
 
         // 대기 중인 경우 3초 주기로 폴링 스케줄 등록
         intervalRef.current = window.setInterval(() => {
           checkStatus();
         }, 3000);
       } catch (error) {
-        console.error("대기열 진입 실패:", error);
+        console.error("[Queue] Enter | Error - 대기열 진입 실패", error);
         alert("대기열 진입 중 오류가 발생했습니다. 다시 시도해주세요.");
         navigate("/");
       }

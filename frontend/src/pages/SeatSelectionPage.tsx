@@ -29,9 +29,10 @@ export const SeatSelectionPage = () => {
     try {
       setIsLoading(true);
       const res = await getSeats(scheduleId);
+      console.log(`[Seat] Fetch List | Success - 좌석 로드 완료 (Count: ${res.seats.length})`);
       setSeats(res.seats);
     } catch (error) {
-      console.error("좌석 정보 조회 실패:", error);
+      console.error("[Seat] Fetch List | Error - 좌석 정보 조회 실패", error);
       alert("좌석 정보를 불러오는 데 실패했습니다.");
     } finally {
       setIsLoading(false);
@@ -78,6 +79,7 @@ export const SeatSelectionPage = () => {
         seatIds: sortedSeatIds,
       });
 
+      console.log("[Reservation] Reserve Seats | Success - 좌석 임시 점유 성공 (GroupId 발급)");
       // 좌석 점유 성공 시에만 제공되는 최종 결제용 1회성 권한(PAYMENT) 토큰 등록
       setPaymentToken(res.accessToken);
 
@@ -101,7 +103,7 @@ export const SeatSelectionPage = () => {
           return;
         }
       }
-      console.error("좌석 점유 실패:", error);
+      console.error("[Reservation] Reserve Seats | Error - 좌석 점유 실패", error);
       alert("좌석 점유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsReserving(false);
