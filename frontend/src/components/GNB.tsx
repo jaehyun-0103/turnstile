@@ -25,6 +25,14 @@ export const GNB = () => {
                 <span className="font-semibold text-gray-800">{userInfo.name}</span> 님
                 <span className="ml-4 text-blue-600 font-bold">{userInfo.balance.toLocaleString()} 원</span>
               </div>
+
+              <button
+                onClick={() => navigate("/mypage")}
+                className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
+              >
+                마이페이지
+              </button>
+
               <button onClick={handleLogout} className="text-sm font-medium text-gray-500 hover:text-gray-800 transition">
                 로그아웃
               </button>

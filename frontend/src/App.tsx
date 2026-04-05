@@ -6,6 +6,7 @@ import { ConcertListPage } from "./pages/ConcertListPage";
 import { ProtectedRoute } from './router/ProtectedRoute';
 import { QueueWaitingPage } from "./pages/QueueWaitingPage";
 import { SeatSelectionPage } from "./pages/SeatSelectionPage";
+import { PaymentPage } from "./pages/PaymentPage";
 
 function App() {
   return (
@@ -26,7 +27,7 @@ function App() {
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/queue" element={<QueueWaitingPage />} />
             <Route path="/seats" element={<SeatSelectionPage />} />
-            <Route path="/payment" element={<div className="p-10 text-center font-bold">결제 화면 이동 성공!</div>} />
+            <Route path="/payment" element={<PaymentPage />} />
           </Route>
 
           {/* 정의되지 않은 잘못된 경로 접근 시 기본 화면으로 강제 리다이렉트하여 404 이탈을 방어함 */}
