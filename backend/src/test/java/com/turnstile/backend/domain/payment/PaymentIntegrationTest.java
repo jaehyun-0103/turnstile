@@ -1,29 +1,18 @@
 package com.turnstile.backend.domain.payment;
 
-import com.turnstile.backend.domain.concert.entity.Concert;
-import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
-import com.turnstile.backend.domain.concert.entity.Seat;
 import com.turnstile.backend.domain.concert.entity.SeatStatus;
-import com.turnstile.backend.domain.concert.repository.ConcertRepository;
-import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.repository.PaymentRepository;
 import com.turnstile.backend.domain.payment.service.PaymentService;
-import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
-import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
