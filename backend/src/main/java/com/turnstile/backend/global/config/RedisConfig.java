@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -64,6 +65,7 @@ public class RedisConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module());
+        objectMapper.registerModule(new ParameterNamesModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         // 캐시 데이터 역직렬화 시 구체적인 객체 타입을 식별하기 위해 타입 정보를 함께 저장하도록 설정
