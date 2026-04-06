@@ -13,6 +13,7 @@ import com.turnstile.backend.domain.reservation.repository.ReservationRepository
 import com.turnstile.backend.domain.reservation.scheduler.SeatHoldScheduler;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ class SeatHoldSchedulerTest {
 
     @BeforeEach
     void setUp() {
+        cleanUpDatabase();
+        
         transactionTemplate.execute(status -> {
             reservationRepository.deleteAllInBatch();
             seatRepository.deleteAllInBatch();
@@ -57,6 +60,23 @@ class SeatHoldSchedulerTest {
             ConcertSchedule schedule = concertScheduleRepository.save(ConcertSchedule.builder().concert(concert).concertDate(LocalDateTime.now().plusDays(10)).totalSeats(100).build());
 
             testSeatId = seatRepository.save(Seat.builder().schedule(schedule).seatNo(1).price(10000L).status(SeatStatus.AVAILABLE).build()).getId();
+            return null;
+        });
+    }
+
+    @AfterEach
+    void tearDown() {
+        // 테스트 종료 직후 생성된 데이터 즉각 회수
+        cleanUpDatabase();
+    }
+
+    private void cleanUpDatabase() {
+        transactionTemplate.execute(status -> {
+            reservationRepository.deleteAllInBatch();
+            seatRepository.deleteAllInBatch();
+            concertScheduleRepository.deleteAllInBatch();
+            concertRepository.deleteAllInBatch();
+            userRepository.deleteAllInBatch();
             return null;
         });
     }

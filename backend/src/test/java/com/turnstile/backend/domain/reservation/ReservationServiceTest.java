@@ -2,6 +2,8 @@ package com.turnstile.backend.domain.reservation;
 
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
+import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
+import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
@@ -29,6 +31,7 @@ class ReservationServiceTest {
 
     @InjectMocks private ReservationService reservationService;
 
+    @Mock private ReservationRepository reservationRepository;
     @Mock private QueueRedisRepository queueRedisRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -41,6 +44,20 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("이미 결제 대기(PENDING) 중인 예약이 있는 유저가 예약 시도 시 ALREADY_HAS_PENDING_RESERVATION 예외가 발생해야 한다")
+    void should_throw_exception_when_user_already_has_pending_reservation() {
+        // given: PENDING 예약을 가진 유저 모킹
+        Long userId = 1L;
+        ReservationRequest request = new ReservationRequest(100L, List.of(10L));
+
+        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(true);
+
+        // when & then: 가장 첫 번째 검증에서 차단되는지 확인
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ALREADY_HAS_PENDING_RESERVATION);
+    }
+
+    @Test
     @DisplayName("대기열을 통과하지 않은(인가되지 않은) 유저가 예약 시도 시 QUEUE_NOT_ACTIVE 예외가 발생해야 한다")
     void should_throw_exception_when_user_is_not_active_in_queue() {
         // given: 대기열에 없는 유저 모킹
@@ -48,6 +65,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, List.of(10L, 11L));
 
+        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(false);
 
         // when & then
@@ -63,6 +81,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, List.of(1L, 2L, 3L, 4L, 5L));
 
+        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then
@@ -78,6 +97,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, java.util.Collections.emptyList());
 
+        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
@@ -94,6 +114,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, null);
 
+        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
