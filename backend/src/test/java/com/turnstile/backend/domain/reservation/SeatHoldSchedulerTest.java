@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -36,83 +37,44 @@ class SeatHoldSchedulerTest {
     @Autowired private ReservationRepository reservationRepository;
     @Autowired private SeatRepository seatRepository;
     @Autowired private UserRepository userRepository;
-    @Autowired private ConcertRepository concertRepository;
-    @Autowired private ConcertScheduleRepository concertScheduleRepository;
-    @Autowired private TransactionTemplate transactionTemplate;
-
-    private Long testSeatId;
-    private User testUser;
-    private final String testGroupId = "test-expired-group";
-
-    @BeforeEach
-    void setUp() {
-        cleanUpDatabase();
-        
-        transactionTemplate.execute(status -> {
-            reservationRepository.deleteAllInBatch();
-            seatRepository.deleteAllInBatch();
-            concertScheduleRepository.deleteAllInBatch();
-            concertRepository.deleteAllInBatch();
-            userRepository.deleteAllInBatch();
-
-            testUser = userRepository.save(User.builder().username("scheduler_user").name("test").balance(0L).build());
-            Concert concert = concertRepository.save(Concert.builder().title("테스트 콘서트").ticketingStartAt(LocalDateTime.now().minusDays(1)).build());
-            ConcertSchedule schedule = concertScheduleRepository.save(ConcertSchedule.builder().concert(concert).concertDate(LocalDateTime.now().plusDays(10)).totalSeats(100).build());
-
-            testSeatId = seatRepository.save(Seat.builder().schedule(schedule).seatNo(1).price(10000L).status(SeatStatus.AVAILABLE).build()).getId();
-            return null;
-        });
-    }
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     @AfterEach
     void tearDown() {
-        // 테스트 종료 직후 생성된 데이터 즉각 회수
-        cleanUpDatabase();
-    }
-
-    private void cleanUpDatabase() {
-        transactionTemplate.execute(status -> {
-            reservationRepository.deleteAllInBatch();
-            seatRepository.deleteAllInBatch();
-            concertScheduleRepository.deleteAllInBatch();
-            concertRepository.deleteAllInBatch();
-            userRepository.deleteAllInBatch();
-            return null;
-        });
+        // 테스트로 인해 발생한 예약 건만 지우고 10번 좌석을 다시 원상 복구
+        reservationRepository.deleteAllInBatch();
+        jdbcTemplate.update("UPDATE seat SET status = 'AVAILABLE', hold_user_id = NULL, hold_expires_at = NULL WHERE id = 10");
     }
 
     @Test
     @DisplayName("점유 만료 시간이 지난 좌석과 연관 예약 데이터는 스케줄러에 의해 각각 AVAILABLE과 EXPIRED 상태로 회수되어야 한다")
     void should_recover_expired_seats_and_expire_pending_reservations() {
-        // given: 현재 시간 기준으로 이미 1분 전에 만료된 점유 좌석과 PENDING 예약 데이터 강제 세팅
-        transactionTemplate.execute(status -> {
-            Seat seat = seatRepository.findById(testSeatId).orElseThrow();
-            LocalDateTime pastExpiredTime = LocalDateTime.now().minusMinutes(1);
-            seatRepository.holdSeatsConditionally(List.of(seat.getId()), testUser.getId(), pastExpiredTime);
+        // given: 동시성 테스트와 겹치지 않는 10번 좌석 사용 (1번 유저가 선점했다고 가정)
+        Long targetSeatId = 10L;
+        Long targetUserId = 1L;
+        String testGroupId = "test-expired-group";
 
-            reservationRepository.save(Reservation.builder()
-                    .groupId(testGroupId)
-                    .user(testUser)
-                    .seat(seat)
-                    .status(ReservationStatus.PENDING)
-                    .price(seat.getPrice())
-                    .reservedAt(LocalDateTime.now().minusMinutes(6)) // 6분 전 예약
-                    .build());
-            return null;
-        });
+        LocalDateTime pastTime = LocalDateTime.now().minusMinutes(6);
 
-        // when: 스케줄러 수동 동작
+        // 시간(과거) 조작이 필수적인 스케줄러 테스트 특성상, 강제로 과거 시간의 예약 건을 DB에 세팅
+        jdbcTemplate.update("UPDATE seat SET status = 'HOLD', hold_user_id = ?, hold_expires_at = ? WHERE id = ?",
+                targetUserId, pastTime, targetSeatId);
+
+        jdbcTemplate.update("INSERT INTO reservation (group_id, user_id, seat_id, price, status, reserved_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', ?, NOW(6), NOW(6))",
+                testGroupId, targetUserId, targetSeatId, 150000L, pastTime);
+
+        // when: 스케줄러 강제 실행
         seatHoldScheduler.recoverExpiredSeats();
 
-        // then: 좌석 상태가 AVAILABLE로 롤백되었는지 검증
-        Seat recoveredSeat = seatRepository.findById(testSeatId).orElseThrow();
+        // then: 좌석 상태가 AVAILABLE로 정상 회수되었는지 검증
+        Seat recoveredSeat = seatRepository.findById(targetSeatId).orElseThrow();
         assertThat(recoveredSeat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
         assertThat(recoveredSeat.getHoldUserId()).isNull();
         assertThat(recoveredSeat.getHoldExpiresAt()).isNull();
 
-        // then: PENDING이던 예약 상태가 EXPIRED로 동기화되었는지 검증
+        // then: 해당 예약 건의 상태가 EXPIRED로 갱신되었는지 검증
         List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(testGroupId);
         assertThat(reservations).hasSize(1);
-        assertThat(reservations.get(0).getStatus()).isEqualTo(ReservationStatus.EXPIRED);
+        assertThat(reservations.getFirst().getStatus()).isEqualTo(ReservationStatus.EXPIRED);
     }
 }
