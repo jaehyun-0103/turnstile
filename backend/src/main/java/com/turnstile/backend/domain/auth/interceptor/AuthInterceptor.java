@@ -56,6 +56,12 @@ public class AuthInterceptor implements HandlerInterceptor {
                 log.warn("[Auth] Verify Access | Fail - Access Denied for Payment API (userId: {}, type: {})", userId, tokenType.name());
                 throw new TurnstileException(ErrorCode.ACCESS_DENIED, "결제 API 접근 권한이 부족합니다.");
             }
+        } else if (uri.equals("/api/v1/reservations/my")) {
+            // LEVEL 1: 내 예매 내역 조회는 대기열 통과 없이 IDENTITY 이상으로 허용
+            if (!tokenType.hasAccess(TokenType.IDENTITY)) {
+                log.warn("[Auth] Verify Access | Fail - Access Denied for My Reservations API (userId: {}, type: {})", userId, tokenType.name());
+                throw new TurnstileException(ErrorCode.ACCESS_DENIED, "마이페이지 접근 권한이 부족합니다.");
+            }
         } else if (uri.startsWith("/api/v1/reservations") || uri.startsWith("/api/v1/schedules")) {
             // LEVEL 2: 좌석 조회 및 예약 도메인은 QUEUE 이상의 토큰 허용
             if (!tokenType.hasAccess(TokenType.QUEUE)) {
