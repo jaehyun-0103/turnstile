@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 로컬 환경에서 부하 테스트를 위한 15,000건의 더미 데이터를 자동 삽입하는 초기화 클래스입니다.
- * JPA 대신 JdbcTemplate과 재귀 CTE 쿼리를 사용하여 1초 이내에 벌크 인서트를 완료합니다.
+ * 로컬 개발 및 통합 테스트 환경에서 사용할 기준(Mock) 데이터를 자동 삽입하는 초기화 클래스입니다.
+ * 컨테이너 재빌드 없이도 다양한 예매 시나리오(오픈 전, 예매 중, 종료)를 검증할 수 있도록 다중 콘서트를 구성합니다.
  */
 @Slf4j
 @Profile("local") // 운영 환경에서 실수로 실행되지 않도록 격리
@@ -31,30 +31,36 @@ public class DummyDataInitializer implements ApplicationRunner {
             return;
         }
 
-        log.info("[Global] Dummy Data Init | Started (Target: 10,000 Users, 5,000 Seats)");
+        log.info("[Global] Dummy Data Init | Started (Target: 100 Users, 3 Concerts, 150 Seats)");
 
-        // 재귀 쿼리 깊이 제한 해제 (1만 건 생성)
-        jdbcTemplate.execute("SET SESSION cte_max_recursion_depth = 10000");
-
-        // 유저 1만 명 삽입
+        // 유저 100명 삽입 (1~90번은 잔액 50만 원, 91~100번은 잔액 0원으로 경계값 테스트 구성)
         String insertUsersSql = "INSERT INTO users (username, name, balance, created_at, updated_at) " +
-                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 10000) " +
-                "SELECT CONCAT('user', n), CONCAT('테스터', n), IF(n <= 9000, 500000, 0), NOW(6), NOW(6) FROM cte";
+                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 100) " +
+                "SELECT CONCAT('user', n), CONCAT('테스터', n), IF(n <= 90, 500000, 0), NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertUsersSql);
 
-        // 콘서트 및 스케줄 삽입
-        jdbcTemplate.execute("INSERT INTO concert (id, title, description, ticketing_start_at, created_at, updated_at) " +
-                "VALUES (1, '[Load Test] 턴스타일 대규모 콘서트', '1만명 부하 테스트용', '2024-01-01 00:00:00.000000', NOW(6), NOW(6))");
+        // 상태별 콘서트 3종 삽입 (진행 중 / 과거 종료 / 미래 오픈 예정)
+        String insertConcertsSql = "INSERT INTO concert (id, title, description, ticketing_start_at, created_at, updated_at) VALUES " +
+                "(1, '[진행중] 턴스타일 스프링 콘서트', '현재 예매 가능한 기본 콘서트입니다.', '2024-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
+                "(2, '[종료] 턴스타일 윈터 콘서트', '이미 예매와 공연이 모두 종료된 콘서트입니다.', '2023-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
+                "(3, '[오픈예정] 턴스타일 썸머 콘서트', '아직 예매 시간이 되지 않은 콘서트입니다.', '2026-12-01 00:00:00.000000', NOW(6), NOW(6))";
+        jdbcTemplate.execute(insertConcertsSql);
 
-        jdbcTemplate.execute("INSERT INTO concert_schedule (id, concert_id, concert_date, total_seats, created_at, updated_at) " +
-                "VALUES (1, 1, '2026-12-24 19:00:00.000000', 5000, NOW(6), NOW(6))");
+        // 콘서트별 회차(Schedule) 1개씩 삽입
+        String insertSchedulesSql = "INSERT INTO concert_schedule (id, concert_id, concert_date, total_seats, created_at, updated_at) VALUES " +
+                "(1, 1, '2026-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
+                "(2, 2, '2023-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
+                "(3, 3, '2027-01-01 19:00:00.000000', 50, NOW(6), NOW(6))";
+        jdbcTemplate.execute(insertSchedulesSql);
 
-        // 좌석 5천 개 삽입
+        // 각 회차별 좌석 50개씩 총 150석 삽입 (재귀 CTE를 재사용하여 간결하게 구성)
         String insertSeatsSql = "INSERT INTO seat (schedule_id, seat_no, price, status, created_at, updated_at) " +
-                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 5000) " +
-                "SELECT 1, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
+                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 50) " +
+                "SELECT 1, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
+                "SELECT 2, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
+                "SELECT 3, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertSeatsSql);
 
-        log.info("[Global] Dummy Data Init | Success (Inserted: 10000 Users, 1 Concert, 1 Schedule, 5000 Seats)");
+        log.info("[Global] Dummy Data Init | Success (Inserted: 100 Users, 3 Concerts, 3 Schedules, 150 Seats)");
     }
 }
