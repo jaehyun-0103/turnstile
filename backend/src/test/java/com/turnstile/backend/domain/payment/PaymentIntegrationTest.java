@@ -9,16 +9,14 @@ import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.dto.PaymentResponse;
+import com.turnstile.backend.domain.payment.repository.PaymentRepository;
 import com.turnstile.backend.domain.payment.service.PaymentService;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -37,6 +35,7 @@ class PaymentIntegrationTest {
     @Autowired private PaymentService paymentService;
     @Autowired private UserRepository userRepository;
     @Autowired private SeatRepository seatRepository;
+    @Autowired private PaymentRepository paymentRepository;
     @Autowired private ReservationRepository reservationRepository;
     @Autowired private ConcertRepository concertRepository;
     @Autowired private ConcertScheduleRepository concertScheduleRepository;
@@ -52,6 +51,8 @@ class PaymentIntegrationTest {
     void setUp() {
         Assertions.assertNotNull(redisTemplate.getConnectionFactory());
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
+
+        cleanUpDatabase();
 
         transactionTemplate.execute(status -> {
             reservationRepository.deleteAllInBatch();
@@ -72,6 +73,25 @@ class PaymentIntegrationTest {
             testSeatId = seat.getId();
 
             reservationRepository.save(Reservation.builder().groupId(testGroupId).user(user).seat(seat).status(ReservationStatus.PENDING).price(150000L).reservedAt(LocalDateTime.now()).build());
+            return null;
+        });
+    }
+
+    // 테스트 종료 직후 데이터베이스 정리
+    @AfterEach
+    void tearDown() {
+        cleanUpDatabase();
+    }
+
+    // 외래키 참조 무결성을 위해 자식 엔티티부터 부모 엔티티 순으로 안전하게 삭제
+    private void cleanUpDatabase() {
+        transactionTemplate.execute(status -> {
+            paymentRepository.deleteAllInBatch(); // 생성된 Payment 내역 가장 먼저 삭제
+            reservationRepository.deleteAllInBatch();
+            seatRepository.deleteAllInBatch();
+            concertScheduleRepository.deleteAllInBatch();
+            concertRepository.deleteAllInBatch();
+            userRepository.deleteAllInBatch();
             return null;
         });
     }

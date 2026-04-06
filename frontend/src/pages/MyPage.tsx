@@ -79,12 +79,13 @@ export const MyPage = () => {
       setIsLoading(false);
     }
   };
-  // ✨ [추가됨] 프론트엔드 단에서 EXPIRED 필터링 및 groupId 기준 데이터 그룹화(병합)
+
+  // 프론트엔드 단에서 EXPIRED 필터링 및 groupId 기준 데이터 그룹화
   const groupedReservations = useMemo(() => {
-    // 1. 만료된 데이터 제외
+    // 만료된 데이터 제외
     const validReservations = reservations.filter((res) => res.status !== "EXPIRED");
 
-    // 2. groupId를 Key로 사용하여 그룹화 및 금액 합산, 좌석 번호 수집
+    // groupId를 Key로 사용하여 그룹화 및 금액 합산, 좌석 번호 수집
     const groups = validReservations.reduce(
       (acc, curr) => {
         if (!acc[curr.groupId]) {
@@ -93,7 +94,7 @@ export const MyPage = () => {
             concertTitle: curr.concertTitle,
             concertDate: curr.concertDate,
             status: curr.status,
-            reservedAt: curr.reservedAt, // 백엔드에서 최신순으로 정렬해서 주므로 그룹의 기준 시간으로 사용
+            reservedAt: curr.reservedAt,
             totalPrice: 0,
             seats: [],
           };
@@ -105,7 +106,6 @@ export const MyPage = () => {
       {} as Record<string, GroupedReservation>,
     );
 
-    // 3. 다시 배열로 변환
     return Object.values(groups);
   }, [reservations]);
 
