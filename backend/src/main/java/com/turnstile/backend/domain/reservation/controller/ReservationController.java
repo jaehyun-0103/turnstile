@@ -49,7 +49,7 @@ public class ReservationController {
     /**
      * 로그인한 사용자의 전체 예약 내역을 조회합니다.
      */
-    @Operation(summary = "내 예약 내역 조회", description = "요구 권한: **LEVEL 2 (QUEUE)** 이상\n\n로그인한 사용자의 전체 예약 내역을 최신순으로 조회합니다.")
+    @Operation(summary = "내 예약 내역 조회", description = "요구 권한: **LEVEL 1 (IDENTITY)** 이상\n\n로그인한 사용자의 전체 예약 내역을 최신순으로 조회합니다.")
     @GetMapping("/my")
     public ResponseEntity<List<MyReservationResponse>> getMyReservations(@LoginUser Long userId) {
         log.info("[Reservation] API Request | Get My Reservations (userId: {})", userId);
