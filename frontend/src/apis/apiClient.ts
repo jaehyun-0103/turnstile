@@ -26,7 +26,7 @@ apiClient.interceptors.request.use(
     if (url.startsWith("/api/v1/payments")) {
       // LEVEL 3
       tokenToInject = paymentToken || queueToken || identityToken;
-    else if (url === "/api/v1/reservations/my") {
+    } else if (url === "/api/v1/reservations/my") {
       // LEVEL 1
       tokenToInject = identityToken;
     } else if (url.startsWith("/api/v1/reservations") || url.startsWith("/api/v1/schedules")) {

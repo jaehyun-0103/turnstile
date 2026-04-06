@@ -126,17 +126,16 @@ export const MyPage = () => {
             {isReservationsLoading ? (
               <div className="flex justify-center items-center h-40 text-gray-400">내역을 불러오는 중...</div>
             ) : reservations.length === 0 ? (
-              
               <div className="flex flex-col justify-center items-center h-40 text-gray-400 px-4 text-center">
-                {/* 예매 내역이 없거나, 접근 권한(QUEUE 토큰)이 없는 평상시 상태일 때의 안내 UI */}
                 <svg className="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  ></path>
                 </svg>
                 <p>조회된 예매 내역이 없습니다.</p>
-                <p className="text-xs mt-3 text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                  💡 <strong>보안 정책 안내</strong><br />
-                  예매 내역은 대기열 통과 후 (예매 활성 상태)에만 확인이 가능합니다.
-                </p>
               </div>
             ) : (
               <ul className="flex flex-col gap-4">
