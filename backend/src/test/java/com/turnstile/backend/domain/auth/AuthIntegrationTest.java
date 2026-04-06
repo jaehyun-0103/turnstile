@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -37,7 +39,7 @@ class AuthIntegrationTest {
     void setUp() {
         // 테스트용 실제 유저를 DB에 미리 적재
         testUser = userRepository.save(User.builder()
-                .username("tester")
+                .username("tester_auth_unique")
                 .name("테스터")
                 .balance(0L)
                 .build());
@@ -46,7 +48,7 @@ class AuthIntegrationTest {
     @AfterEach
     void tearDown() {
         // 테스트 종료 후 DB 정리
-        userRepository.deleteAllInBatch();
+        userRepository.delete(testUser);
     }
 
     // 타 도메인 상태에 영향을 받지 않기 위한 3-Tier 검증 전용 더미 컨트롤러

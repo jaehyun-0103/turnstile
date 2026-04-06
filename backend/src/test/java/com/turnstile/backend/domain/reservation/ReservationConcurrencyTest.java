@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -79,10 +80,18 @@ class ReservationConcurrencyTest {
         // given: 100명의 유저 대기열 통과 처리
         int threadCount = 100;
         long expireScore = Instant.now().getEpochSecond() + 300;
-        for (long i = 1; i <= threadCount; i++) {
-            queueRedisRepository.enterQueue(String.valueOf(testConcertId), String.valueOf(i));
-            queueRedisRepository.transitionQueue(String.valueOf(testConcertId), 1000, 1000, expireScore);
+
+        // 100명의 실제 유저를 DB에 생성 및 대기열 통과 처리
+        List<User> concurrentUsers = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            concurrentUsers.add(User.builder().username("tester_" + i).name("tester").balance(0L).build());
         }
+        userRepository.saveAll(concurrentUsers); // 실제 DB ID 발급
+
+        for (User u : concurrentUsers) {
+            queueRedisRepository.enterQueue(String.valueOf(testConcertId), String.valueOf(u.getId()));
+        }
+        queueRedisRepository.transitionQueue(String.valueOf(testConcertId), 1000, 1000, expireScore);
 
         ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
         CountDownLatch readyLatch = new CountDownLatch(threadCount);
@@ -93,8 +102,8 @@ class ReservationConcurrencyTest {
         AtomicInteger failCount = new AtomicInteger(0);
 
         // when
-        for (long i = 1; i <= threadCount; i++) {
-            final long userId = i;
+        for (User u : concurrentUsers) {
+            final long userId = u.getId();
             executorService.submit(() -> {
                 try {
                     readyLatch.countDown();

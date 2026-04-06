@@ -24,11 +24,16 @@ apiClient.interceptors.request.use(
 
     // 백엔드 AuthInterceptor 정책에 따른 3-Tier 토큰 선별 로직
     if (url.startsWith("/api/v1/payments")) {
+      // LEVEL 3
       tokenToInject = paymentToken || queueToken || identityToken;
+    } else if (url === "/api/v1/reservations/my") {
+      // LEVEL 1
+      tokenToInject = identityToken;
     } else if (url.startsWith("/api/v1/reservations") || url.startsWith("/api/v1/schedules")) {
-      // 마이페이지의 내 예매 내역(/reservations/my) 조회 시에도 백엔드 정책상 QUEUE 토큰 이상이 필수
-      tokenToInject = paymentToken || queueToken || identityToken;
+      // LEVEL 2
+      tokenToInject = queueToken || identityToken;
     } else {
+      // LEVEL 1
       tokenToInject = identityToken;
     }
 
