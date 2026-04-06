@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { enterQueue, getQueueStatus } from "../apis/queue.api";
 import { useAuthStore } from "../store/useAuthStore";
+import toast from "react-hot-toast";
 
 /**
  * 콘서트 예매를 위한 대기열 진입 및 상태 폴링(Polling)을 수행하고,
@@ -24,7 +25,7 @@ export const QueueWaitingPage = () => {
 
   useEffect(() => {
     if (!concertId || !scheduleId) {
-      alert("잘못된 접근입니다. 콘서트를 다시 선택해주세요.");
+      toast.error("잘못된 접근입니다. 콘서트를 다시 선택해주세요.");
       navigate("/");
       return;
     }
@@ -83,7 +84,7 @@ export const QueueWaitingPage = () => {
         }, 3000);
       } catch (error) {
         console.error("[Queue] Enter | Error - 대기열 진입 실패", error);
-        alert("대기열 진입 중 오류가 발생했습니다. 다시 시도해주세요.");
+        toast.error("대기열 진입 중 오류가 발생했습니다. 다시 시도해주세요.");
         navigate("/");
       }
     };

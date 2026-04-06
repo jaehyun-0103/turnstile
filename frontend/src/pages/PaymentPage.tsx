@@ -4,6 +4,7 @@ import { getMyBalance } from "../apis/user.api";
 import { confirmPayment } from "../apis/payment.api";
 import { useAuthStore } from "../store/useAuthStore";
 import { isAxiosError } from "axios";
+import toast from "react-hot-toast";
 
 /**
  * 임시 점유된 예약 건의 최종 결제를 처리하는 페이지 컴포넌트입니다.
@@ -33,7 +34,7 @@ export const PaymentPage = () => {
       updateBalance(res.balance);
     } catch (error) {
       console.error("잔액 조회 실패:", error);
-      alert("잔액 정보를 불러오지 못했습니다.");
+      toast.error("잔액 정보를 불러오지 못했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +44,7 @@ export const PaymentPage = () => {
   useEffect(() => {
     // 필수 데이터 누락 시 이전 화면으로 방어 라우팅
     if (!groupId || !expiredAt || !concertId) {
-      alert("비정상적인 접근입니다.");
+      toast.error("비정상적인 접근입니다.");
       navigate("/");
       return;
     }
@@ -78,7 +79,7 @@ export const PaymentPage = () => {
       if (expired) {
         console.warn("[Payment] Timer | Expired - 결제 제한 시간 만료로 인한 세션 롤백");
         clearInterval(timerId);
-        alert("결제 시간이 만료되어 예매가 취소되었습니다.");
+        toast.error("결제 시간이 만료되어 예매가 취소되었습니다.");
 
         // 시간 만료 시 1회성 결제 토큰 즉시 폐기 및 롤백
         clearCheckoutTokens();
@@ -107,7 +108,7 @@ export const PaymentPage = () => {
       updateBalance(res.balance);
       clearCheckoutTokens();
 
-      alert("결제가 성공적으로 완료되었습니다!");
+      toast.success("결제가 성공적으로 완료되었습니다!");
       navigate("/mypage");
     } catch (error) {
       if (isAxiosError(error) && error.response) {
@@ -117,14 +118,14 @@ export const PaymentPage = () => {
         // 잔액 부족, 중복 결제 등 백엔드 비즈니스 예외 세분화 처리
         if (errorCode === "S002") {
           console.warn("[Payment] Confirm | Reject - 잔액 부족 (S002)");
-          alert("잔액이 부족합니다. 결제가 취소되었습니다.");
+          toast.error("잔액이 부족합니다. 결제가 취소되었습니다.");
         } else {
           console.error(`[Payment] Confirm | Error - ${errorMessage} (${errorCode})`);
-          alert(errorMessage || "결제 중 오류가 발생하여 예매가 취소되었습니다.");
+          toast.error(errorMessage || "결제 중 오류가 발생하여 예매가 취소되었습니다.");
         }
       } else {
         console.error("[Payment] Confirm | Error - 네트워크/알 수 없는 오류", error);
-        alert("네트워크 오류가 발생했습니다.");
+        toast.error("네트워크 오류가 발생했습니다.");
       }
 
       // 예외 발생 시 보안상 결제 토큰 회수 후 메인으로 강제 롤백 (Fail-Fast)
