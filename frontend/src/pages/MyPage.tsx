@@ -1,8 +1,19 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { getMyBalance, chargeBalance } from "../apis/user.api";
 import { getMyReservations, type MyReservationResponse } from "../apis/reservation.api";
 import toast from "react-hot-toast";
+
+// 그룹화된 예매 내역의 타입을 정의
+interface GroupedReservation {
+  groupId: string;
+  concertTitle: string;
+  concertDate: string;
+  status: string;
+  reservedAt: string;
+  totalPrice: number;
+  seats: number[];
+}
 
 /**
  * 사용자의 기본 정보, 실시간 잔액 동기화 및 예약(예매) 내역을 관리하는 마이페이지 컴포넌트입니다.
@@ -68,6 +79,35 @@ export const MyPage = () => {
       setIsLoading(false);
     }
   };
+
+  // 프론트엔드 단에서 EXPIRED 필터링 및 groupId 기준 데이터 그룹화
+  const groupedReservations = useMemo(() => {
+    // 만료된 데이터 제외
+    const validReservations = reservations.filter((res) => res.status !== "EXPIRED");
+
+    // groupId를 Key로 사용하여 그룹화 및 금액 합산, 좌석 번호 수집
+    const groups = validReservations.reduce(
+      (acc, curr) => {
+        if (!acc[curr.groupId]) {
+          acc[curr.groupId] = {
+            groupId: curr.groupId,
+            concertTitle: curr.concertTitle,
+            concertDate: curr.concertDate,
+            status: curr.status,
+            reservedAt: curr.reservedAt,
+            totalPrice: 0,
+            seats: [],
+          };
+        }
+        acc[curr.groupId].totalPrice += curr.price;
+        acc[curr.groupId].seats.push(curr.seatNo);
+        return acc;
+      },
+      {} as Record<string, GroupedReservation>,
+    );
+
+    return Object.values(groups);
+  }, [reservations]);
 
   if (!userInfo) return null;
 
@@ -146,29 +186,44 @@ export const MyPage = () => {
               </div>
             ) : (
               <ul className="flex flex-col gap-4">
-                {reservations.map((res) => (
-                  <li
-                    key={res.reservationId}
-                    className="p-4 border border-gray-100 rounded-xl bg-gray-50 hover:bg-white transition shadow-sm"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-gray-800">{res.concertTitle}</h3>
-                      <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-700 rounded-md">
-                        {res.status === "PAID" ? "결제완료" : res.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">공연일시:</span> {new Date(res.concertDate).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-3">
-                      <span className="font-medium">좌석번호:</span> {res.seatNo}번
-                    </p>
-                    <div className="flex justify-between items-end pt-3 border-t border-gray-200">
-                      <span className="text-xs text-gray-400">결제일: {new Date(res.reservedAt).toLocaleDateString()}</span>
-                      <span className="font-bold text-blue-600">{res.price.toLocaleString()} 원</span>
-                    </div>
-                  </li>
-                ))}
+                {groupedReservations.map((group) => {
+                  const isPending = group.status === "PENDING";
+
+                  return (
+                    <li
+                      key={group.groupId}
+                      className={`p-4 border rounded-xl transition shadow-sm ${
+                        isPending ? "border-red-300 bg-red-50 hover:bg-red-100" : "border-gray-100 bg-gray-50 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className={`font-bold ${isPending ? "text-red-900" : "text-gray-800"}`}>{group.concertTitle}</h3>
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                            isPending ? "bg-red-200 text-red-800 animate-pulse" : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {isPending ? "결제 대기 (요청 요망)" : "결제 완료"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        <span className="font-medium">공연일시:</span> {new Date(group.concertDate).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-3">
+                        <span className="font-medium">좌석번호:</span>
+                        <span className="font-semibold">{group.seats.sort((a, b) => a - b).join(", ")}</span>번
+                      </p>
+                      <div className={`flex justify-between items-end pt-3 border-t ${isPending ? "border-red-200" : "border-gray-200"}`}>
+                        <span className="text-xs text-gray-400">
+                          {isPending ? "예약일:" : "결제일:"} {new Date(group.reservedAt).toLocaleDateString()}
+                        </span>
+                        <span className={`font-bold ${isPending ? "text-red-600" : "text-blue-600"}`}>
+                          총 {group.totalPrice.toLocaleString()} 원
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
