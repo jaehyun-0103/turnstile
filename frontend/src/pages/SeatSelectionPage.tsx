@@ -1,9 +1,37 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getSeats, type SeatResponse } from "../apis/concert.api";
 import { reserveSeats } from "../apis/reservation.api";
 import { useAuthStore } from "../store/useAuthStore";
 import { isAxiosError } from "axios";
+
+interface SeatButtonProps {
+  seat: SeatResponse;
+  isSelected: boolean;
+  onToggle: (seatId: number) => void;
+}
+
+// React.memo를 사용하여 props(seat, isSelected, onToggle)가 변경되지 않으면 리렌더링을 건너뜁니다.
+const SeatButton = memo(({ seat, isSelected, onToggle }: SeatButtonProps) => {
+  const isAvailable = seat.status === "AVAILABLE";
+
+  return (
+    <button
+      disabled={!isAvailable}
+      onClick={() => onToggle(seat.seatId)}
+      className={`
+        w-8 h-8 rounded-t-lg text-xs font-bold transition flex items-center justify-center
+        ${isSelected ? "bg-blue-600 text-white shadow-md transform -translate-y-1" : ""}
+        ${isAvailable && !isSelected ? "bg-gray-50 border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-300" : ""}
+        ${seat.status === "HOLD" ? "bg-gray-300 text-transparent cursor-not-allowed" : ""}
+        ${seat.status === "SOLD" ? "bg-gray-800 text-transparent cursor-not-allowed" : ""}
+      `}
+      title={`좌석 ${seat.seatNo}번 (${seat.price.toLocaleString()}원)`}
+    >
+      {(isAvailable || isSelected) && seat.seatNo}
+    </button>
+  );
+});
 
 /**
  * 특정 회차의 좌석 배치도를 조회하고, 원하는 좌석을 선택하여 임시 점유(예약)를 요청하는 페이지입니다.
@@ -50,7 +78,7 @@ export const SeatSelectionPage = () => {
   }, [scheduleId, concertId, fetchSeats, navigate]);
 
   // 다중 좌석 선택 토글 (백엔드 제약조건에 맞춰 클라이언트단 최대 4석 제한 방어)
-  const toggleSeatSelection = (seatId: number) => {
+  const toggleSeatSelection = useCallback((seatId: number) => {
     setSelectedSeatIds((prev) => {
       if (prev.includes(seatId)) {
         return prev.filter((id) => id !== seatId);
@@ -62,7 +90,7 @@ export const SeatSelectionPage = () => {
       }
       return [...prev, seatId]; // 새로운 좌석 선택 추가
     });
-  };
+  }, []);
 
   // 선택한 좌석 임시 점유(예약) 요청 로직
   const handleReservation = async () => {
@@ -133,29 +161,10 @@ export const SeatSelectionPage = () => {
 
         {/* 촘촘한 Flex 래핑을 활용한 좌석 그리드 렌더링 */}
         <div className="flex flex-wrap gap-2 justify-center max-h-[500px] overflow-y-auto p-2">
-          {seats.map((seat) => {
-            const isSelected = selectedSeatIds.includes(seat.seatId);
-            const isAvailable = seat.status === "AVAILABLE";
-
-            return (
-              <button
-                key={seat.seatId}
-                disabled={!isAvailable}
-                onClick={() => toggleSeatSelection(seat.seatId)}
-                className={`
-                  w-8 h-8 rounded-t-lg text-xs font-bold transition flex items-center justify-center
-                  ${isSelected ? "bg-blue-600 text-white shadow-md transform -translate-y-1" : ""}
-                  ${isAvailable && !isSelected ? "bg-gray-50 border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-300" : ""}
-                  ${seat.status === "HOLD" ? "bg-gray-300 text-transparent cursor-not-allowed" : ""}
-                  ${seat.status === "SOLD" ? "bg-gray-800 text-transparent cursor-not-allowed" : ""}
-                `}
-                title={`좌석 ${seat.seatNo}번 (${seat.price.toLocaleString()}원)`}
-              >
-                {/* 비어있거나 내가 선택한 좌석만 번호 노출, 판매/점유 중인 좌석은 색상으로만 구분 */}
-                {(isAvailable || isSelected) && seat.seatNo}
-              </button>
-            );
-          })}
+          {/* [수정됨] 분리된 SeatButton 컴포넌트 렌더링 */}
+          {seats.map((seat) => (
+            <SeatButton key={seat.seatId} seat={seat} isSelected={selectedSeatIds.includes(seat.seatId)} onToggle={toggleSeatSelection} />
+          ))}
         </div>
       </div>
 
