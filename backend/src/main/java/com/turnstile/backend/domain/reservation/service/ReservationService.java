@@ -58,6 +58,12 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse reserveSeats(Long userId, ReservationRequest request) {
+        // 이미 결제 대기(PENDING) 중인 예약이 있는지 사전 검증 (Fail-fast)
+        if (reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)) {
+            log.warn("[Reservation] Reserve Seats | Fail - Already has pending reservation (userId: {})", userId);
+            throw new TurnstileException(ErrorCode.ALREADY_HAS_PENDING_RESERVATION, "결제 대기 중인 내역을 먼저 결제하거나 취소해주세요.");
+        }
+
         String concertIdStr = String.valueOf(request.concertId());
         String userIdStr = String.valueOf(userId);
 

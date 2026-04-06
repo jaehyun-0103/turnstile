@@ -1,6 +1,7 @@
 package com.turnstile.backend.domain.reservation.repository;
 
 import com.turnstile.backend.domain.reservation.entity.Reservation;
+import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -49,4 +50,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "WHERE r.user.id = :userId " +
             "ORDER BY r.reservedAt DESC")
     List<Reservation> findAllByUserIdWithDetails(@Param("userId") Long userId);
+
+    /**
+     * 특정 유저가 특정 상태의 예약을 보유하고 있는지 여부를 반환합니다. (어뷰징 사전 차단용)
+     */
+    boolean existsByUserIdAndStatus(Long userId, ReservationStatus status);
 }
