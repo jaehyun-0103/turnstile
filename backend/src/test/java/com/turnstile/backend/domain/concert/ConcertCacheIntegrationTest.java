@@ -1,7 +1,5 @@
 package com.turnstile.backend.domain.concert;
 
-import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
-import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.concert.service.ConcertService;
 import com.turnstile.backend.global.config.RedisConfig;
@@ -16,14 +14,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 

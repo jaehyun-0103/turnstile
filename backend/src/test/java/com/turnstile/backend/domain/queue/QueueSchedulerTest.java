@@ -3,10 +3,7 @@ package com.turnstile.backend.domain.queue;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.scheduler.QueueScheduler;
 import com.turnstile.backend.global.config.RedisConfig;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.redis.DataRedisTest;
 import org.springframework.context.annotation.Import;
@@ -27,26 +24,29 @@ class QueueSchedulerTest {
     @Autowired private QueueScheduler queueScheduler;
     @Autowired private RedisTemplate<String, String> redisTemplate;
 
-    private static final String CONCERT_ID = "1";
+    private static final Long TARGET_CONCERT_ID = 1L;
     private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
-    private static final String WAITING_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":waiting";
-    private static final String ACTIVE_QUEUE_KEY = "queue:concert:" + CONCERT_ID + ":active";
-    private static final String MAX_ACTIVE_CONFIG_KEY = "queue:concert:" + CONCERT_ID + ":capacity";
+    private static final String WAITING_QUEUE_KEY = "queue:concert:" + TARGET_CONCERT_ID + ":waiting";
+    private static final String ACTIVE_QUEUE_KEY = "queue:concert:" + TARGET_CONCERT_ID + ":active";
+    private static final String MAX_ACTIVE_CONFIG_KEY = "queue:concert:" + TARGET_CONCERT_ID + ":capacity";
 
     @BeforeEach
     void setUp() {
-        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
-        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
-        // 테스트의 직관성을 위해 스케줄러의 프로퍼티 값을 강제 주입
         ReflectionTestUtils.setField(queueScheduler, "admissionBatchSize", 100L);
         ReflectionTestUtils.setField(queueScheduler, "expirationTime", 300L);
+    }
+
+    @AfterEach
+    void tearDown() {
+        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
+        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
     }
 
     @Test
     @DisplayName("스케줄러 동작 시 만료된 유저는 삭제되고, 동적 수용량의 빈자리만큼 대기열 인원이 입장해야 한다")
     void should_remove_expired_users_and_admit_waiting_users_based_on_capacity() {
         // given: 동적 최대 허용 인원을 3명으로 세팅
-        redisTemplate.opsForSet().add(ACTIVE_CONCERTS_KEY, CONCERT_ID);
+        redisTemplate.opsForSet().add(ACTIVE_CONCERTS_KEY, String.valueOf(TARGET_CONCERT_ID));
         redisTemplate.opsForValue().set(MAX_ACTIVE_CONFIG_KEY, "3");
 
         long now = Instant.now().getEpochSecond();
@@ -61,8 +61,8 @@ class QueueSchedulerTest {
         }
 
         // when: 정리 스케줄러(Cleanup)와 입장 스케줄러(Admission) 실행
-        queueScheduler.scheduleCleanup(); // 만료 유저 1명 삭제 (현재 활성 1명)
-        queueScheduler.scheduleAdmission(); // 빈자리 2명분 만큼 대기열에서 추출하여 입장 처리
+        queueScheduler.scheduleCleanup();
+        queueScheduler.scheduleAdmission();
 
         // then: 최대 정원 3명에 맞춰 정확히 유지 및 입장되었는지 검증
         assertThat(redisTemplate.opsForZSet().size(ACTIVE_QUEUE_KEY)).isEqualTo(3);
