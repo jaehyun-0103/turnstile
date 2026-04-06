@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../apis/auth.api";
 import { useAuthStore } from "../store/useAuthStore";
+import toast from "react-hot-toast";
 
 /**
  * 사용자 로그인을 처리하고 IDENTITY 권한 토큰을 획득하는 페이지 컴포넌트입니다.
@@ -16,7 +17,10 @@ export const LoginPage = () => {
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    if (!username.trim()) return alert("아이디를 입력해주세요.");
+    if (!username.trim()) {
+      toast.error("아이디를 입력해주세요.");
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -37,7 +41,7 @@ export const LoginPage = () => {
       navigate("/");
     } catch (error) {
       console.error("로그인 실패:", error);
-      alert("로그인에 실패했습니다. 아이디를 확인해주세요.");
+      toast.error("로그인에 실패했습니다. 아이디를 확인해주세요.");
     } finally {
       setIsLoading(false);
     }

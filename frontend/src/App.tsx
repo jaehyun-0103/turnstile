@@ -7,6 +7,7 @@ import { ProtectedRoute } from './router/ProtectedRoute';
 import { QueueWaitingPage } from "./pages/QueueWaitingPage";
 import { SeatSelectionPage } from "./pages/SeatSelectionPage";
 import { PaymentPage } from "./pages/PaymentPage";
+import { Toaster } from "react-hot-toast";
 
 /**
  * 프론트엔드의 최상위 라우팅(Root Routing) 컴포넌트입니다.
@@ -15,6 +16,7 @@ import { PaymentPage } from "./pages/PaymentPage";
 function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Toaster position="top-center" reverseOrder={false} />
       {/* 상단 공통 네비게이션 바 (어느 페이지에서든 고정 노출) */}
       <GNB />
 
@@ -26,7 +28,6 @@ function App() {
 
           {/* 보호된 구역 (Level 1 - IDENTITY 토큰 보유자만 접근 가능) */}
           <Route element={<ProtectedRoute />}>
-            
             {/* 기본 진입점: 예매 동선 최적화를 위해 메인을 콘서트 목록으로 설정 */}
             <Route path="/" element={<ConcertListPage />} />
             <Route path="/mypage" element={<MyPage />} />

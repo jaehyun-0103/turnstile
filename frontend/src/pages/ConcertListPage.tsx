@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getConcerts, getConcertSchedules, type ConcertResponse, type ConcertScheduleResponse } from "../apis/concert.api";
+import toast from "react-hot-toast";
 
 /**
  * 콘서트 목록을 조회하고, 특정 콘서트의 회차를 선택하여 예매 대기열로 진입하는 메인 페이지 컴포넌트입니다.
@@ -40,7 +41,7 @@ export const ConcertListPage = () => {
 
     // 예매 오픈 전 진입 시도 차단 (TICKETING_NOT_OPEN 예외 사전 방어)
     if (now < openTime) {
-      alert(`아직 예매가 오픈되지 않았습니다.\n오픈 일시: ${openTime.toLocaleString()}`);
+      toast.error(`아직 예매가 오픈되지 않았습니다.\n오픈 일시: ${openTime.toLocaleString()}`);
       return;
     }
 

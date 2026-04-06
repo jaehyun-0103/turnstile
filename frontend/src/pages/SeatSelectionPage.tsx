@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, memo } from "react";
+import { useEffect, useState, useCallback, memo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getSeats, type SeatResponse } from "../apis/concert.api";
 import { reserveSeats } from "../apis/reservation.api";
 import { useAuthStore } from "../store/useAuthStore";
 import { isAxiosError } from "axios";
+import toast from "react-hot-toast";
 
 interface SeatButtonProps {
   seat: SeatResponse;
@@ -11,7 +12,6 @@ interface SeatButtonProps {
   onToggle: (seatId: number) => void;
 }
 
-// React.memo를 사용하여 props(seat, isSelected, onToggle)가 변경되지 않으면 리렌더링을 건너뜁니다.
 const SeatButton = memo(({ seat, isSelected, onToggle }: SeatButtonProps) => {
   const isAvailable = seat.status === "AVAILABLE";
 
@@ -51,6 +51,14 @@ export const SeatSelectionPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isReserving, setIsReserving] = useState(false);
 
+  // 최신 선택 좌석 정보를 들고 있을 Ref 생성
+  const selectedIdsRef = useRef<number[]>([]);
+
+  // selectedSeatIds 상태가 변할 때마다 Ref를 동기화
+  useEffect(() => {
+    selectedIdsRef.current = selectedSeatIds;
+  }, [selectedSeatIds]);
+
   // 동시성 경합 실패 시 즉각적인 화면 동기화를 위해 좌석 조회 로직을 분리
   const fetchSeats = useCallback(async () => {
     if (!scheduleId) return;
@@ -61,7 +69,7 @@ export const SeatSelectionPage = () => {
       setSeats(res.seats);
     } catch (error) {
       console.error("[Seat] Fetch List | Error - 좌석 정보 조회 실패", error);
-      alert("좌석 정보를 불러오는 데 실패했습니다.");
+      toast.error("좌석 정보를 불러오는 데 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -70,26 +78,30 @@ export const SeatSelectionPage = () => {
   useEffect(() => {
     // scheduleId와 concertId 둘 다 없을 경우 방어 (비정상 접근 차단)
     if (!scheduleId || !concertId) {
-      alert("잘못된 접근입니다.");
+      toast.error("잘못된 접근입니다.");
       navigate("/");
       return;
     }
     fetchSeats();
   }, [scheduleId, concertId, fetchSeats, navigate]);
 
-  // 다중 좌석 선택 토글 (백엔드 제약조건에 맞춰 클라이언트단 최대 4석 제한 방어)
+  // 다중 좌석 선택 토글
   const toggleSeatSelection = useCallback((seatId: number) => {
-    setSelectedSeatIds((prev) => {
-      if (prev.includes(seatId)) {
-        return prev.filter((id) => id !== seatId);
-      }
+    const currentSelected = selectedIdsRef.current;
+    const isCurrentlySelected = currentSelected.includes(seatId);
 
-      if (prev.length >= 4) {
-        alert("최대 4석까지만 예매할 수 있습니다.");
-        return prev;
+    if (isCurrentlySelected) {
+      // 이미 선택된 좌석이면 해제
+      setSelectedSeatIds((prev) => prev.filter((id) => id !== seatId));
+    } else {
+      // 새로운 좌석 선택 시도
+      if (currentSelected.length >= 4) {
+        toast.error("최대 4석까지만 예매할 수 있습니다.", { id: "max-seat-limit" });
+        return;
       }
-      return [...prev, seatId]; // 새로운 좌석 선택 추가
-    });
+      // 검증 통과 시 상태 업데이트
+      setSelectedSeatIds((prev) => [...prev, seatId]);
+    }
   }, []);
 
   // 선택한 좌석 임시 점유(예약) 요청 로직
@@ -125,14 +137,19 @@ export const SeatSelectionPage = () => {
         const errorCode = error.response.data?.code;
         // 타인에 의해 찰나의 순간 선점된 경우(CAS 실패 S004) 화면 최신화 및 재시도 유도
         if (errorCode === "S004") {
-          alert("이미 선택되었거나 예매 중인 좌석이 포함되어 있습니다.\n좌석표를 다시 불러옵니다.");
+          toast.error("이미 선택되었거나 예매 중인 좌석이 포함되어 있습니다.\n좌석표를 다시 불러옵니다.", { duration: 3000 });
           setSelectedSeatIds([]);
           fetchSeats();
           return;
         }
+
+        if (errorCode === "P006") {
+          toast.error("이미 결제 대기 중인 예약이 존재합니다.", { duration: 3000 });
+          return;
+        }
       }
       console.error("[Reservation] Reserve Seats | Error - 좌석 점유 실패", error);
-      alert("좌석 점유에 실패했습니다. 다시 시도해주세요.");
+      toast.error("좌석 점유에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsReserving(false);
     }
@@ -161,7 +178,7 @@ export const SeatSelectionPage = () => {
 
         {/* 촘촘한 Flex 래핑을 활용한 좌석 그리드 렌더링 */}
         <div className="flex flex-wrap gap-2 justify-center max-h-[500px] overflow-y-auto p-2">
-          {/* [수정됨] 분리된 SeatButton 컴포넌트 렌더링 */}
+          {/* 분리된 SeatButton 컴포넌트 렌더링 */}
           {seats.map((seat) => (
             <SeatButton key={seat.seatId} seat={seat} isSelected={selectedSeatIds.includes(seat.seatId)} onToggle={toggleSeatSelection} />
           ))}
@@ -239,4 +256,4 @@ export const SeatSelectionPage = () => {
       </div>
     </div>
   );
-};
+};;;;

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { getMyBalance, chargeBalance } from "../apis/user.api";
 import { getMyReservations, type MyReservationResponse } from "../apis/reservation.api";
+import toast from "react-hot-toast";
 
 /**
  * 사용자의 기본 정보, 실시간 잔액 동기화 및 예약(예매) 내역을 관리하는 마이페이지 컴포넌트입니다.
@@ -44,19 +45,25 @@ export const MyPage = () => {
   // 잔액 충전 폼 제출 핸들러 (시연/테스트용)
   const handleCharge = async (e: FormEvent) => {
     e.preventDefault();
-    if (!userInfo) return alert("로그인 정보가 없습니다.");
-    if (!chargeAmount || chargeAmount <= 0) return alert("올바른 금액을 입력해주세요.");
+    if (!userInfo) {
+      toast.error("로그인 정보가 없습니다.");
+      return;
+    }
+    if (!chargeAmount || chargeAmount <= 0) {
+      toast.error("올바른 금액을 입력해주세요.");
+      return;
+    }
 
     try {
       setIsLoading(true);
       const res = await chargeBalance(userInfo.userId, Number(chargeAmount));
 
       updateBalance(res.balance); // 스토어 잔액 업데이트
-      alert(`${chargeAmount.toLocaleString()}원이 충전되었습니다.`);
+      toast.success(`${chargeAmount.toLocaleString()}원이 충전되었습니다.`);
       setChargeAmount("");
     } catch (error) {
       console.error("[User] Charge Balance | Error - 충전 실패", error);
-      alert("충전에 실패했습니다.");
+      toast.error("충전에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }

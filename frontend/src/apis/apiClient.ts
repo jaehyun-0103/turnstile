@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
+import toast from "react-hot-toast";
 
 /**
  * 전역 API 클라이언트입니다.
@@ -65,7 +66,7 @@ apiClient.interceptors.response.use(
           // 기본 로그인(IDENTITY) 토큰 자체가 만료된 경우에만 전체 세션 초기화 및 로그인 화면으로 강제 이동
           useAuthStore.getState().clearAllTokens();
           window.location.href = "/login";
-          alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+          toast.error("세션이 만료되었습니다. 다시 로그인해주세요.");
         }
       }
     }
