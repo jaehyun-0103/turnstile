@@ -5,11 +5,11 @@ import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.exception.TurnstileException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -24,29 +24,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class UserConcurrencyTest {
 
-    private User savedUser;
-
     @Autowired private UserService userService;
     @Autowired private UserRepository userRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
-    @BeforeEach
-    void setUp() {
-        savedUser = userRepository.save(User.builder()
-                .username("test_concurrency" + System.nanoTime())
-                .name("test")
-                .balance(5000L) // 기본 잔액 5,000원 세팅
-                .build());
-    }
+    // 더미 데이터 중 경계값 테스트용으로 잔액이 0원인 유저 2명 타겟팅
+    private final Long CHARGE_TARGET_USER_ID = 91L;
+    private final Long DEDUCT_TARGET_USER_ID = 92L;
 
     @AfterEach
     void tearDown() {
-        userRepository.deleteById(savedUser.getId());
+        // [중요] 테스트로 인해 오염된 잔액을 더미 데이터의 초기 상태(0원)로 완벽히 롤백
+        jdbcTemplate.update("UPDATE users SET balance = 0 WHERE id IN (?, ?)", CHARGE_TARGET_USER_ID, DEDUCT_TARGET_USER_ID);
     }
 
     @Test
     @DisplayName("동시에 100번의 충전 요청이 들어와도 Race Condition 없이 잔액이 정확히 누적되어야 한다")
     void should_accumulate_balance_accurately_under_concurrent_charges() throws InterruptedException {
-        // given: 100번의 1,000원 충전 요청 세팅
+        // given: 잔액이 0원인 91번 유저에게 100번의 1,000원 충전 요청 세팅
         int threadCount = 100;
         long chargeAmount = 1000L;
         ExecutorService executorService = Executors.newFixedThreadPool(32);
@@ -56,7 +51,7 @@ class UserConcurrencyTest {
         for (int i = 0; i < threadCount; i++) {
             executorService.execute(() -> {
                 try {
-                    userService.chargeBalance(savedUser.getId(), chargeAmount);
+                    userService.chargeBalance(CHARGE_TARGET_USER_ID, chargeAmount);
                 } finally {
                     latch.countDown();
                 }
@@ -64,15 +59,17 @@ class UserConcurrencyTest {
         }
         latch.await();
 
-        // then: 기본 잔액 5000원 + (100 * 1000원) = 105,000원 검증
-        User updatedUser = userRepository.findById(savedUser.getId()).orElseThrow();
-        assertThat(updatedUser.getBalance()).isEqualTo(5000L + (threadCount * chargeAmount));
+        // then: 기본 잔액 0원 + (100 * 1000원) = 100,000원 검증
+        User updatedUser = userRepository.findById(CHARGE_TARGET_USER_ID).orElseThrow();
+        assertThat(updatedUser.getBalance()).isEqualTo(threadCount * chargeAmount);
     }
 
     @Test
     @DisplayName("보유 잔액(5,000원)에 대해 동시에 10번의 1,000원 차감 요청 시, 5번만 성공하고 초과 차감을 방어해야 한다")
     void should_prevent_negative_balance_under_concurrent_deductions() throws InterruptedException {
-        // given: 10번의 1,000원 차감 요청 세팅
+        // given: 차감 테스트를 위해 92번 유저의 잔액을 강제로 5,000원으로 세팅
+        jdbcTemplate.update("UPDATE users SET balance = 5000 WHERE id = ?", DEDUCT_TARGET_USER_ID);
+
         int threadCount = 10;
         long deductAmount = 1000L;
         ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -85,7 +82,7 @@ class UserConcurrencyTest {
         for (int i = 0; i < threadCount; i++) {
             executorService.execute(() -> {
                 try {
-                    userService.deductBalance(savedUser.getId(), deductAmount);
+                    userService.deductBalance(DEDUCT_TARGET_USER_ID, deductAmount);
                     successCount.incrementAndGet();
                 } catch (TurnstileException e) {
                     failCount.incrementAndGet(); // INSUFFICIENT_BALANCE 예외 발생
@@ -97,7 +94,7 @@ class UserConcurrencyTest {
         latch.await();
 
         // then: 정확히 5번 성공, 5번 실패(예외) 및 최종 잔액 0원 검증
-        User updatedUser = userRepository.findById(savedUser.getId()).orElseThrow();
+        User updatedUser = userRepository.findById(DEDUCT_TARGET_USER_ID).orElseThrow();
         assertThat(successCount.get()).isEqualTo(5);
         assertThat(failCount.get()).isEqualTo(5);
         assertThat(updatedUser.getBalance()).isZero();
