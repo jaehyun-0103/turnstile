@@ -50,7 +50,7 @@ class ReservationServiceTest {
         Long userId = 1L;
         ReservationRequest request = new ReservationRequest(100L, List.of(10L));
 
-        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(true);
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)).willReturn(true);
 
         // when & then: 가장 첫 번째 검증에서 차단되는지 확인
         TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
@@ -65,7 +65,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, List.of(10L, 11L));
 
-        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(false);
 
         // when & then
@@ -81,7 +81,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, List.of(1L, 2L, 3L, 4L, 5L));
 
-        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then
@@ -97,7 +97,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, java.util.Collections.emptyList());
 
-        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
@@ -114,7 +114,7 @@ class ReservationServiceTest {
         Long concertId = 100L;
         ReservationRequest request = new ReservationRequest(concertId, null);
 
-        given(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.PENDING)).willReturn(false);
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)).willReturn(false);
         given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
 
         // when & then: 하한선 검증 실패로 인한 예외 및 메시지 확인
