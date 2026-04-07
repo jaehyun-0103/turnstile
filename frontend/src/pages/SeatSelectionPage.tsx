@@ -40,7 +40,7 @@ const SeatButton = memo(({ seat, isSelected, onToggle }: SeatButtonProps) => {
 export const SeatSelectionPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setPaymentToken } = useAuthStore();
+  const { setPaymentToken, queueToken } = useAuthStore();
 
   const state = location.state as { scheduleId?: number; concertId?: number } | null;
   const scheduleId = state?.scheduleId;
@@ -76,6 +76,12 @@ export const SeatSelectionPage = () => {
   }, [scheduleId]);
 
   useEffect(() => {
+    // 결제 완료 후 등 queueToken이 지워진 상태로 뒤로가기 진입 시 즉시 추방
+    if (!queueToken) {
+      navigate("/", { replace: true });
+      return;
+    }
+
     // scheduleId와 concertId 둘 다 없을 경우 방어 (비정상 접근 차단)
     if (!scheduleId || !concertId) {
       toast.error("잘못된 접근입니다.");
@@ -83,7 +89,7 @@ export const SeatSelectionPage = () => {
       return;
     }
     fetchSeats();
-  }, [scheduleId, concertId, fetchSeats, navigate]);
+  }, [scheduleId, concertId, fetchSeats, navigate, queueToken]);
 
   // 다중 좌석 선택 토글
   const toggleSeatSelection = useCallback((seatId: number) => {
@@ -135,6 +141,7 @@ export const SeatSelectionPage = () => {
     } catch (error) {
       if (isAxiosError(error) && error.response) {
         const errorCode = error.response.data?.code;
+
         // 타인에 의해 찰나의 순간 선점된 경우(CAS 실패 S004) 화면 최신화 및 재시도 유도
         if (errorCode === "S004") {
           toast.error("이미 선택되었거나 예매 중인 좌석이 포함되어 있습니다.\n좌석표를 다시 불러옵니다.", { duration: 3000 });
@@ -144,10 +151,11 @@ export const SeatSelectionPage = () => {
         }
 
         if (errorCode === "P006") {
-          toast.error("이미 결제 대기 중인 예약이 존재합니다.", { duration: 3000 });
+          toast.error("이전 결제 이탈로 인해 해당 콘서트의 재예매가 잠시 제한됩니다.", { duration: 3000, id: "penalty-toast" });
           return;
         }
       }
+
       console.error("[Reservation] Reserve Seats | Error - 좌석 점유 실패", error);
       toast.error("좌석 점유에 실패했습니다. 다시 시도해주세요.");
     } finally {
@@ -256,4 +264,4 @@ export const SeatSelectionPage = () => {
       </div>
     </div>
   );
-};;;;
+};

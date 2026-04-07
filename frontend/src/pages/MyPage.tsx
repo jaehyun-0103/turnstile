@@ -53,7 +53,7 @@ export const MyPage = () => {
     fetchReservations();
   }, [updateBalance]);
 
-  // 잔액 충전 폼 제출 핸들러 (시연/테스트용)
+  // 잔액 충전 폼 제출 핸들러
   const handleCharge = async (e: FormEvent) => {
     e.preventDefault();
     if (!userInfo) {
@@ -82,8 +82,8 @@ export const MyPage = () => {
 
   // 프론트엔드 단에서 EXPIRED 필터링 및 groupId 기준 데이터 그룹화
   const groupedReservations = useMemo(() => {
-    // 만료된 데이터 제외
-    const validReservations = reservations.filter((res) => res.status !== "EXPIRED");
+    // 결제된 데이터만 표기
+    const validReservations = reservations.filter((res) => res.status === "PAID");
 
     // groupId를 Key로 사용하여 그룹화 및 금액 합산, 좌석 번호 수집
     const groups = validReservations.reduce(
@@ -172,7 +172,7 @@ export const MyPage = () => {
           <div className="flex-1 overflow-y-auto max-h-[500px] pr-2">
             {isReservationsLoading ? (
               <div className="flex justify-center items-center h-40 text-gray-400">내역을 불러오는 중...</div>
-            ) : reservations.length === 0 ? (
+            ) : groupedReservations.length === 0 ? (
               <div className="flex flex-col justify-center items-center h-40 text-gray-400 px-4 text-center">
                 <svg className="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -182,48 +182,29 @@ export const MyPage = () => {
                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                   ></path>
                 </svg>
-                <p>조회된 예매 내역이 없습니다.</p>
+                <p>완료된 예매 내역이 없습니다.</p>
               </div>
             ) : (
               <ul className="flex flex-col gap-4">
-                {groupedReservations.map((group) => {
-                  const isPending = group.status === "PENDING";
-
-                  return (
-                    <li
-                      key={group.groupId}
-                      className={`p-4 border rounded-xl transition shadow-sm ${
-                        isPending ? "border-red-300 bg-red-50 hover:bg-red-100" : "border-gray-100 bg-gray-50 hover:bg-white"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className={`font-bold ${isPending ? "text-red-900" : "text-gray-800"}`}>{group.concertTitle}</h3>
-                        <span
-                          className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                            isPending ? "bg-red-200 text-red-800 animate-pulse" : "bg-green-100 text-green-700"
-                          }`}
-                        >
-                          {isPending ? "결제 대기 (요청 요망)" : "결제 완료"}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <span className="font-medium">공연일시:</span> {new Date(group.concertDate).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-3">
-                        <span className="font-medium">좌석번호:</span>
-                        <span className="font-semibold">{group.seats.sort((a, b) => a - b).join(", ")}</span>번
-                      </p>
-                      <div className={`flex justify-between items-end pt-3 border-t ${isPending ? "border-red-200" : "border-gray-200"}`}>
-                        <span className="text-xs text-gray-400">
-                          {isPending ? "예약일:" : "결제일:"} {new Date(group.reservedAt).toLocaleDateString()}
-                        </span>
-                        <span className={`font-bold ${isPending ? "text-red-600" : "text-blue-600"}`}>
-                          총 {group.totalPrice.toLocaleString()} 원
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
+                {groupedReservations.map((group) => (
+                  <li key={group.groupId} className="p-4 border rounded-xl transition shadow-sm border-gray-100 bg-gray-50 hover:bg-white">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-gray-800">{group.concertTitle}</h3>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-md bg-green-100 text-green-700">결제 완료</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">공연일시:</span> {new Date(group.concertDate).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-3">
+                      <span className="font-medium">좌석번호:</span>
+                      <span className="font-semibold px-1">{group.seats.sort((a, b) => a - b).join(", ")}</span>번
+                    </p>
+                    <div className="flex justify-between items-end pt-3 border-t border-gray-200">
+                      <span className="text-xs text-gray-400">결제일: {new Date(group.reservedAt).toLocaleDateString()}</span>
+                      <span className="font-bold text-blue-600">총 {group.totalPrice.toLocaleString()} 원</span>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
