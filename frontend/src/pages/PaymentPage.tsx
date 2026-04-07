@@ -149,17 +149,29 @@ export const PaymentPage = () => {
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* 상단: 타이머 및 안내 영역 */}
-        <div className="bg-blue-600 p-8 text-center text-white">
-          <h1 className="text-2xl font-bold mb-2">결제 대기 중</h1>
-          <p className="text-blue-100 mb-6">아래 시간 내에 결제를 완료하지 않으면 좌석이 취소됩니다.</p>
-          <div className="inline-block bg-white/20 px-6 py-3 rounded-2xl backdrop-blur-sm border border-white/30">
-            <span className="text-4xl font-mono font-bold tracking-wider">{timeLeft}</span>
-          </div>
+        {/* 상단: 타이틀 영역*/}
+        <div className="bg-gray-50 p-6 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-gray-800">결제 진행</h1>
+          <p className="text-sm text-gray-500 mt-1">선택하신 좌석을 최종 확정합니다.</p>
         </div>
 
         {/* 하단: 결제 상세 내역 및 버튼 영역 */}
         <div className="p-8">
+          {/* 타이머 및 데드라인 경고 패널 */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8">
+            <span className="text-red-800 font-bold flex items-center gap-2 mb-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              결제 만료 임박
+            </span>
+            <p className="text-sm text-red-600 leading-relaxed">
+              시간 내 미결제 시 좌석이 즉시 취소되며, <br />
+              결제 페이지 이탈 시 악성 선점 방지 정책에 따라 <span className="font-bold underline">남은 시간({timeLeft})</span> 동안 해당
+              콘서트의 재예매가 제한 됩니다.
+            </p>
+          </div>
+
           <h2 className="text-lg font-bold text-gray-800 mb-4">결제 상세 내역</h2>
 
           <div className="bg-gray-50 rounded-xl p-6 mb-8 flex flex-col gap-4">
