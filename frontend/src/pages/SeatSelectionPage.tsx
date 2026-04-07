@@ -40,7 +40,7 @@ const SeatButton = memo(({ seat, isSelected, onToggle }: SeatButtonProps) => {
 export const SeatSelectionPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setPaymentToken } = useAuthStore();
+  const { setPaymentToken, queueToken } = useAuthStore();
 
   const state = location.state as { scheduleId?: number; concertId?: number } | null;
   const scheduleId = state?.scheduleId;
@@ -76,6 +76,12 @@ export const SeatSelectionPage = () => {
   }, [scheduleId]);
 
   useEffect(() => {
+    // 결제 완료 후 등 queueToken이 지워진 상태로 뒤로가기 진입 시 즉시 추방
+    if (!queueToken) {
+      navigate("/", { replace: true });
+      return;
+    }
+
     // scheduleId와 concertId 둘 다 없을 경우 방어 (비정상 접근 차단)
     if (!scheduleId || !concertId) {
       toast.error("잘못된 접근입니다.");
@@ -83,7 +89,7 @@ export const SeatSelectionPage = () => {
       return;
     }
     fetchSeats();
-  }, [scheduleId, concertId, fetchSeats, navigate]);
+  }, [scheduleId, concertId, fetchSeats, navigate, queueToken]);
 
   // 다중 좌석 선택 토글
   const toggleSeatSelection = useCallback((seatId: number) => {

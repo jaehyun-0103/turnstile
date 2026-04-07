@@ -1,9 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useLocation, useNavigate, useBlocker } from "react-router-dom";
 import { getMyBalance } from "../apis/user.api";
 import { confirmPayment } from "../apis/payment.api";
 import { useAuthStore } from "../store/useAuthStore";
-import { isAxiosError } from "axios";
 import toast from "react-hot-toast";
 
 /**
@@ -13,7 +12,7 @@ import toast from "react-hot-toast";
 export const PaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, updateBalance, clearCheckoutTokens } = useAuthStore();
+  const { userInfo, updateBalance, clearCheckoutTokens, paymentToken } = useAuthStore();
 
   const state = location.state as { groupId?: string; expiredAt?: string; totalAmount?: number; concertId?: number } | null;
   const groupId = state?.groupId;
@@ -28,8 +27,69 @@ export const PaymentPage = () => {
   const [isPaying, setIsPaying] = useState(false);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
-  // 현재 잔액 동기화
+  const isProcessDoneRef = useRef(false);
+  const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 의도된 이탈이 아니면서, 토큰이 있고, 경로가 바뀔 때 라우팅을 차단
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !isProcessDoneRef.current && paymentToken !== null && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // blocker가 라우팅을 차단하면 커스텀 이탈 모달 노출
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      setShowExitModal(true);
+    }
+  }, [blocker.state]);
+
+  useEffect(() => {
+    // 좀비 방어: 의도된 이탈이 아닌데 토큰이 없는 경우 (직접 URL 접속 등)
+    if (!isProcessDoneRef.current && !paymentToken) {
+      toast.error("유효하지 않은 접근이거나 결제 세션이 만료되었습니다.", { id: "zombie-guard" });
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // 무한 로딩(새로고침) 방어: 토큰은 있지만 state가 날아간 경우
+    if (!isProcessDoneRef.current && (!groupId || !expiredAt || !concertId)) {
+      toast.error("결제 정보가 유실되었습니다. 다시 시도해주세요.", { id: "refresh-guard" });
+      isProcessDoneRef.current = true;
+      clearCheckoutTokens();
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // Strict Mode 방어용 타이머 초기화
+    if (cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = null;
+    }
+
+    // 브라우저 탭 닫기/새로고침 방어
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isProcessDoneRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // 언보안 권한 회수
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+
+      cleanupTimerRef.current = setTimeout(() => {
+        // 의도된 이탈(결제 완료 등)이 아닐 때만 토큰을 회수
+        if (!isProcessDoneRef.current) {
+          clearCheckoutTokens();
+        }
+      }, 100);
+    };
+  }, [paymentToken, groupId, expiredAt, concertId, navigate, clearCheckoutTokens]);
+
   const fetchBalance = useCallback(async () => {
     try {
       const res = await getMyBalance();
@@ -44,12 +104,7 @@ export const PaymentPage = () => {
 
   // 백엔드 점유 만료 시간(expiredAt) 기반 타이머 작동
   useEffect(() => {
-    // 필수 데이터 누락 시 이전 화면으로 방어 라우팅
-    if (!groupId || !expiredAt || !concertId) {
-      toast.error("비정상적인 접근입니다.");
-      navigate("/");
-      return;
-    }
+    if (!expiredAt || isProcessDoneRef.current) return;
 
     fetchBalance();
 
@@ -65,32 +120,27 @@ export const PaymentPage = () => {
         setTimeLeft("00:00");
         return true;
       }
-
-      const minutes = Math.floor((diff / 1000 / 60) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
-
-      setTimeLeft(`${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
+      const m = Math.floor((diff / 1000 / 60) % 60);
+      const s = Math.floor((diff / 1000) % 60);
+      setTimeLeft(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
       return false;
     };
 
-    const isAlreadyExpired = updateTimer();
-    if (isAlreadyExpired) return;
+    if (updateTimer()) return;
 
     const timerId = setInterval(() => {
-      const expired = updateTimer();
-      if (expired) {
-        console.warn("[Payment] Timer | Expired - 결제 제한 시간 만료로 인한 세션 롤백");
+      if (updateTimer()) {
         clearInterval(timerId);
         toast.error("결제 시간이 만료되어 예매가 취소되었습니다.");
 
-        // 시간 만료 시 1회성 결제 토큰 즉시 폐기 및 롤백
+        isProcessDoneRef.current = true; // 타이머 만료도 의도된 이탈로 간주
         clearCheckoutTokens();
-        navigate("/");
+        navigate("/", { replace: true });
       }
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [groupId, expiredAt, concertId, navigate, fetchBalance, clearCheckoutTokens]);
+  }, [expiredAt, fetchBalance, navigate, clearCheckoutTokens]);
 
   // 최종 결제 확정 핸들러
   const handlePayment = async () => {
@@ -99,65 +149,53 @@ export const PaymentPage = () => {
     try {
       setShowConfirmModal(false);
       setIsPaying(true);
-      // PAYMENT 토큰을 사용하여 백엔드 결제 검증 API 호출
-      const res = await confirmPayment({
-        concertId,
-        groupId,
-        amount: totalAmount,
-      });
+      const res = await confirmPayment({ concertId, groupId, amount: totalAmount });
 
-      console.log("[Payment] Confirm | Success - 결제 확정 및 좌석 SOLD 처리 완료");
-      // 결제 성공 시 잔액 동기화 및 보안을 위한 토큰 즉각 회수
+      isProcessDoneRef.current = true;
       updateBalance(res.balance);
       clearCheckoutTokens();
 
       toast.success("결제가 성공적으로 완료되었습니다!");
-      navigate("/mypage");
+
+      setTimeout(() => {
+        navigate("/mypage", { replace: true });
+      }, 100);
     } catch (error) {
-      if (isAxiosError(error) && error.response) {
-        const errorCode = error.response.data?.code;
-        const errorMessage = error.response.data?.message;
-
-        // 잔액 부족, 중복 결제 등 백엔드 비즈니스 예외 세분화 처리
-        if (errorCode === "S002") {
-          console.warn("[Payment] Confirm | Reject - 잔액 부족 (S002)");
-          toast.error("잔액이 부족합니다. 결제가 취소되었습니다.");
-        } else {
-          console.error(`[Payment] Confirm | Error - ${errorMessage} (${errorCode})`);
-          toast.error(errorMessage || "결제 중 오류가 발생하여 예매가 취소되었습니다.");
-        }
-      } else {
-        console.error("[Payment] Confirm | Error - 네트워크/알 수 없는 오류", error);
-        toast.error("네트워크 오류가 발생했습니다.");
-      }
-
-      // 예외 발생 시 보안상 결제 토큰 회수 후 메인으로 강제 롤백 (Fail-Fast)
+      isProcessDoneRef.current = true;
       clearCheckoutTokens();
-      navigate("/");
+      navigate("/", { replace: true });
     } finally {
       setIsPaying(false);
     }
   };
 
+  // 커스텀 이탈 모달 액션
+  const handleConfirmExit = () => {
+    isProcessDoneRef.current = true;
+    clearCheckoutTokens();
+    if (blocker.state === "blocked") blocker.proceed();
+  };
+
+  const handleCancelExit = () => {
+    if (blocker.state === "blocked") blocker.reset();
+    setShowExitModal(false);
+  };
+
   const currentBalance = userInfo?.balance ?? 0;
   const isBalanceSufficient = currentBalance >= totalAmount;
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center min-h-[80vh]">결제 정보를 불러오는 중...</div>;
+  if (isLoading || (!isProcessDoneRef.current && !paymentToken)) {
+    return <div className="flex justify-center items-center min-h-[80vh]">보안 세션 확인 중...</div>;
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-12 px-4">
+    <div className="max-w-2xl mx-auto py-12 px-4 relative">
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* 상단: 타이틀 영역*/}
         <div className="bg-gray-50 p-6 border-b border-gray-100">
           <h1 className="text-xl font-bold text-gray-800">결제 진행</h1>
-          <p className="text-sm text-gray-500 mt-1">선택하신 좌석을 최종 확정합니다.</p>
         </div>
 
-        {/* 하단: 결제 상세 내역 및 버튼 영역 */}
         <div className="p-8">
-          {/* 타이머 및 데드라인 경고 패널 */}
           <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-8">
             <span className="text-red-800 font-bold flex items-center gap-2 mb-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,13 +204,10 @@ export const PaymentPage = () => {
               결제 만료 임박
             </span>
             <p className="text-sm text-red-600 leading-relaxed">
-              시간 내 미결제 시 좌석이 즉시 취소되며, <br />
-              결제 페이지 이탈 시 악성 선점 방지 정책에 따라 <span className="font-bold underline">남은 시간({timeLeft})</span> 동안 해당
-              콘서트의 재예매가 제한 됩니다.
+              시간 내 미결제 시 좌석이 취소되며, <br />
+              이탈 시 <span className="font-bold underline">남은 시간({timeLeft})</span> 동안 재예매가 제한됩니다.
             </p>
           </div>
-
-          <h2 className="text-lg font-bold text-gray-800 mb-4">결제 상세 내역</h2>
 
           <div className="bg-gray-50 rounded-xl p-6 mb-8 flex flex-col gap-4">
             <div className="flex justify-between items-center pb-4 border-b border-gray-200">
@@ -185,40 +220,25 @@ export const PaymentPage = () => {
                 {currentBalance.toLocaleString()} 원
               </span>
             </div>
-
-            {!isBalanceSufficient && (
-              <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm font-medium text-center">
-                잔액이 부족합니다. 마이페이지에서 충전 후 다시 시도해주세요.
-              </div>
-            )}
           </div>
 
           <button
             onClick={() => setShowConfirmModal(true)}
             disabled={isExpired || !isBalanceSufficient || isPaying}
-            className={`w-full py-4 rounded-xl font-bold text-lg transition ${
-              isExpired || !isBalanceSufficient || isPaying
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700 shadow-md"
-            }`}
+            className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg disabled:bg-gray-200 shadow-md transition hover:bg-blue-700"
           >
-            {isPaying ? "결제 처리 중..." : isBalanceSufficient ? `${totalAmount.toLocaleString()}원 결제하기` : "잔액 부족"}
+            {isPaying ? "처리 중..." : `${totalAmount.toLocaleString()}원 결제하기`}
           </button>
 
           <div className="mt-4 text-center">
-            <button
-              onClick={() => {
-                clearCheckoutTokens(); // 결제 수동 취소 시 확실한 권한 회수
-                navigate(-1);
-              }}
-              className="text-gray-400 hover:text-gray-600 text-sm font-medium underline"
-            >
-              결제 취소하고 좌석표로 돌아가기
+            <button onClick={() => navigate(-1)} className="text-gray-400 text-sm underline hover:text-gray-600">
+              결제 취소하고 나가기
             </button>
           </div>
         </div>
       </div>
-      {/* 결제 최종 확인 모달 */}
+
+      {/* 결제 확인 모달 */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-xl">
@@ -227,17 +247,42 @@ export const PaymentPage = () => {
               총 <span className="font-bold text-blue-600">{totalAmount.toLocaleString()}원</span>을 결제하시겠습니까?
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
-              >
+              <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-3 bg-gray-100 font-bold rounded-xl">
                 취소
               </button>
-              <button
-                onClick={handlePayment}
-                className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition"
-              >
-                결제 승인
+              <button onClick={handlePayment} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl">
+                결제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이탈 방지 모달 */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">정말 나가시겠습니까?</h3>
+            <p className="text-gray-600 mb-8 text-sm leading-relaxed">
+              지금 나가시면 좌석 예약이 취소됩니다. <br />
+              <span className="font-bold text-red-600 underline">남은 시간({timeLeft})</span> 동안 재예매가 제한됩니다.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={handleConfirmExit} className="w-full py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600">
+                나가기
+              </button>
+              <button onClick={handleCancelExit} className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
+                계속하기
               </button>
             </div>
           </div>

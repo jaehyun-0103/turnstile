@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
           userInfo: null,
         }),
 
-      clearCheckoutTokens: () => set({ paymentToken: null }),
+      clearCheckoutTokens: () => set({ paymentToken: null, queueToken: null }),
     }),
     {
       name: "turnstile-auth-storage",
