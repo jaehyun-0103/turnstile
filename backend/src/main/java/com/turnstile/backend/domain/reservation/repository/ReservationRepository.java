@@ -55,4 +55,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      * 특정 유저가 특정 상태의 예약을 보유하고 있는지 여부를 반환합니다. (어뷰징 사전 차단용)
      */
     boolean existsByUserIdAndStatus(Long userId, ReservationStatus status);
+
+    /**
+     * 특정 시간 이전에 'EXPIRED' 상태가 된 예약 데이터들을 일괄 삭제합니다.
+     */
+    @Modifying
+    @Query("DELETE FROM Reservation r WHERE r.status = 'EXPIRED' AND r.updatedAt <= :targetTime")
+    int deleteExpiredReservationsOlderThan(@Param("targetTime") LocalDateTime targetTime);
 }
