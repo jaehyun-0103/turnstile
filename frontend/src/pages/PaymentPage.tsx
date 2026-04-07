@@ -27,6 +27,8 @@ export const PaymentPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   // 현재 잔액 동기화
   const fetchBalance = useCallback(async () => {
     try {
@@ -95,6 +97,7 @@ export const PaymentPage = () => {
     if (!groupId || !concertId) return;
 
     try {
+      setShowConfirmModal(false);
       setIsPaying(true);
       // PAYMENT 토큰을 사용하여 백엔드 결제 검증 API 호출
       const res = await confirmPayment({
@@ -179,7 +182,7 @@ export const PaymentPage = () => {
           </div>
 
           <button
-            onClick={handlePayment}
+            onClick={() => setShowConfirmModal(true)}
             disabled={isExpired || !isBalanceSufficient || isPaying}
             className={`w-full py-4 rounded-xl font-bold text-lg transition ${
               isExpired || !isBalanceSufficient || isPaying
@@ -203,6 +206,31 @@ export const PaymentPage = () => {
           </div>
         </div>
       </div>
+      {/* 결제 최종 확인 모달 */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">결제 확인</h3>
+            <p className="text-gray-600 mb-8">
+              총 <span className="font-bold text-blue-600">{totalAmount.toLocaleString()}원</span>을 결제하시겠습니까?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+              >
+                취소
+              </button>
+              <button
+                onClick={handlePayment}
+                className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition"
+              >
+                결제 승인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
