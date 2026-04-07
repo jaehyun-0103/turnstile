@@ -31,7 +31,7 @@ public class DummyDataInitializer implements ApplicationRunner {
             return;
         }
 
-        log.info("[Global] Dummy Data Init | Started (Target: 100 Users, 3 Concerts, 150 Seats)");
+        log.info("[Global] Dummy Data Init | Started (Target: 100 Users, 4 Concerts, 200 Seats)");
 
         // 유저 100명 삽입 (1~90번은 잔액 50만 원, 91~100번은 잔액 0원으로 경계값 테스트 구성)
         String insertUsersSql = "INSERT INTO users (username, name, balance, created_at, updated_at) " +
@@ -41,16 +41,18 @@ public class DummyDataInitializer implements ApplicationRunner {
 
         // 상태별 콘서트 3종 삽입 (진행 중 / 과거 종료 / 미래 오픈 예정)
         String insertConcertsSql = "INSERT INTO concert (id, title, description, ticketing_start_at, created_at, updated_at) VALUES " +
-                "(1, '[진행중] 턴스타일 스프링 콘서트', '현재 예매 가능한 기본 콘서트입니다.', '2024-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
-                "(2, '[종료] 턴스타일 윈터 콘서트', '이미 예매와 공연이 모두 종료된 콘서트입니다.', '2023-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
-                "(3, '[오픈예정] 턴스타일 썸머 콘서트', '아직 예매 시간이 되지 않은 콘서트입니다.', '2026-12-01 00:00:00.000000', NOW(6), NOW(6))";
+                "(1, '[진행중] 턴스타일 스프링 콘서트1', '현재 예매 가능한 기본 콘서트입니다.', '2024-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
+                "(2, '[진행중] 턴스타일 스프링 콘서트2', '현재 예매 가능한 기본 콘서트입니다.', '2024-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
+                "(3, '[종료] 턴스타일 윈터 콘서트', '이미 예매와 공연이 모두 종료된 콘서트입니다.', '2023-01-01 00:00:00.000000', NOW(6), NOW(6)), " +
+                "(4, '[오픈예정] 턴스타일 썸머 콘서트', '아직 예매 시간이 되지 않은 콘서트입니다.', '2026-12-01 00:00:00.000000', NOW(6), NOW(6))";
         jdbcTemplate.execute(insertConcertsSql);
 
         // 콘서트별 회차(Schedule) 1개씩 삽입
         String insertSchedulesSql = "INSERT INTO concert_schedule (id, concert_id, concert_date, total_seats, created_at, updated_at) VALUES " +
                 "(1, 1, '2026-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
                 "(2, 2, '2023-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
-                "(3, 3, '2027-01-01 19:00:00.000000', 50, NOW(6), NOW(6))";
+                "(3, 3, '2023-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
+                "(4, 4, '2027-01-01 19:00:00.000000', 50, NOW(6), NOW(6))";
         jdbcTemplate.execute(insertSchedulesSql);
 
         // 각 회차별 좌석 50개씩 총 150석 삽입 (재귀 CTE를 재사용하여 간결하게 구성)
@@ -58,9 +60,10 @@ public class DummyDataInitializer implements ApplicationRunner {
                 "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 50) " +
                 "SELECT 1, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
                 "SELECT 2, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
-                "SELECT 3, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
+                "SELECT 3, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
+                "SELECT 4, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertSeatsSql);
 
-        log.info("[Global] Dummy Data Init | Success (Inserted: 100 Users, 3 Concerts, 3 Schedules, 150 Seats)");
+        log.info("[Global] Dummy Data Init | Success (Inserted: 100 Users, 4 Concerts, 4 Schedules, 200 Seats)");
     }
 }

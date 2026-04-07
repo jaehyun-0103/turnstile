@@ -52,14 +52,19 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findAllByUserIdWithDetails(@Param("userId") Long userId);
 
     /**
-     * 특정 유저가 특정 상태의 예약을 보유하고 있는지 여부를 반환합니다. (어뷰징 사전 차단용)
-     */
-    boolean existsByUserIdAndStatus(Long userId, ReservationStatus status);
-
-    /**
      * 특정 시간 이전에 'EXPIRED' 상태가 된 예약 데이터들을 일괄 삭제합니다.
      */
     @Modifying
     @Query("DELETE FROM Reservation r WHERE r.status = 'EXPIRED' AND r.updatedAt <= :targetTime")
     int deleteExpiredReservationsOlderThan(@Param("targetTime") LocalDateTime targetTime);
+
+    /**
+     * 다중 콘서트 환경에서 타 콘서트 예매를 차단하지 않기 위해 격리 검증 시 사용됩니다.
+     */
+    @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
+            "JOIN r.seat s JOIN s.schedule sc " +
+            "WHERE r.user.id = :userId AND sc.concert.id = :concertId AND r.status = :status")
+    boolean existsByUserIdAndConcertIdAndStatus(@Param("userId") Long userId,
+                                                @Param("concertId") Long concertId,
+                                                @Param("status") ReservationStatus status);
 }
