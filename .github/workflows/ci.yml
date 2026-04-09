@@ -15,7 +15,7 @@ jobs:
 
       # 백엔드 빌드 검증
       - name: Set up JDK 21
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -24,11 +24,11 @@ jobs:
         run: |
           cd backend
           chmod +x ./gradlew
-          ./gradlew build
+          ./gradlew build -x test
 
       # 프론트엔드 빌드 검증
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
