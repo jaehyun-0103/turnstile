@@ -17,7 +17,7 @@ export interface QueueStatusResponse {
  * 대기열 진입 요청
  */
 export const enterQueue = async (concertId: number): Promise<QueueEntryResponse> => {
-  const response = await apiClient.post("/api/v1/queue/entry", { concertId });
+  const response = await apiClient.post("/queue/entry", { concertId });
   return response.data;
 };
 
@@ -25,7 +25,7 @@ export const enterQueue = async (concertId: number): Promise<QueueEntryResponse>
  * 대기열 순번 및 ACTIVE 전환 여부 확인 (Polling 대상)
  */
 export const getQueueStatus = async (concertId: number): Promise<QueueStatusResponse> => {
-  const response = await apiClient.get("/api/v1/queue/status", {
+  const response = await apiClient.get("/queue/status", {
     params: { concertId },
   });
   return response.data;

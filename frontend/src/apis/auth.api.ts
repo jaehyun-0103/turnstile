@@ -16,6 +16,6 @@ interface LoginResponse {
  * 사용자 로그인 및 IDENTITY 토큰 발급
  */
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
-  const response = await apiClient.post("/api/v1/auth/login", data);
+  const response = await apiClient.post("/auth/login", data);
   return response.data;
 };
