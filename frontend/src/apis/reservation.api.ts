@@ -28,7 +28,7 @@ export interface MyReservationResponse {
  * @important 데드락 방지를 위해 호출부에서 seatIds 오름차순 정렬 필수
  */
 export const reserveSeats = async (request: ReservationRequest): Promise<ReservationResponse> => {
-  const response = await apiClient.post("/api/v1/reservations", request);
+  const response = await apiClient.post("/reservations", request);
   return response.data;
 };
 
@@ -36,6 +36,6 @@ export const reserveSeats = async (request: ReservationRequest): Promise<Reserva
  * 내 예매 내역 목록 조회
  */
 export const getMyReservations = async (): Promise<MyReservationResponse[]> => {
-  const response = await apiClient.get("/api/v1/reservations/my");
+  const response = await apiClient.get("/reservations/my");
   return response.data;
 };

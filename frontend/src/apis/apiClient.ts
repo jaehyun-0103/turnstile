@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
  * 응답 에러(401 등) 발생 시 권한 수준에 맞는 세션 롤백 처리를 수행합니다.
  */
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api/v1",
   timeout: 5000,
   headers: {
     "Content-Type": "application/json",
@@ -24,13 +24,13 @@ apiClient.interceptors.request.use(
     let tokenToInject: string | null = null;
 
     // 백엔드 AuthInterceptor 정책에 따른 3-Tier 토큰 선별 로직
-    if (url.startsWith("/api/v1/payments")) {
+    if (url.startsWith("/payments")) {
       // LEVEL 3
       tokenToInject = paymentToken || queueToken || identityToken;
-    } else if (url === "/api/v1/reservations/my") {
+    } else if (url === "/reservations/my") {
       // LEVEL 1
       tokenToInject = identityToken;
-    } else if (url.startsWith("/api/v1/reservations") || url.startsWith("/api/v1/schedules")) {
+    } else if (url.startsWith("/reservations") || url.startsWith("/schedules")) {
       // LEVEL 2
       tokenToInject = queueToken || identityToken;
     } else {
@@ -57,7 +57,7 @@ apiClient.interceptors.response.use(
 
       if (status === 401) {
         // 예매/결제 도메인에서 발생한 단기 토큰 만료인 경우
-        if (url.startsWith("/api/v1/reservations") || url.startsWith("/api/v1/payments") || url.startsWith("/api/v1/schedules")) {
+        if (url.startsWith("/reservations") || url.startsWith("/payments") || url.startsWith("/schedules")) {
           console.warn(`[Network] Interceptor | 401 Unauthorized - 예매/결제 단기 토큰 만료 처리 (URL: ${url})`);
           // 전체 로그아웃을 방지하고 해당 1회성/단기 토큰만 안전하게 파기
           useAuthStore.getState().clearCheckoutTokens();
