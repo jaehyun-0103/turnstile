@@ -34,6 +34,18 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: turnstile-api
+
 jwt:
   secret: "turnstile-ticketing-system-secret-key"
 
