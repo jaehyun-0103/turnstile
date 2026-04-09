@@ -115,4 +115,22 @@ public class QueueRedisRepository {
         String activeKey = "queue:concert:" + concertIdStr + ":active";
         redisTemplate.opsForZSet().remove(activeKey, userIdStr);
     }
+
+    /**
+     * 특정 콘서트의 현재 대기 중인 유저 수(WAITING)를 조회합니다.
+     */
+    public long getWaitingUserCount(String concertIdStr) {
+        String waitingKey = "queue:concert:" + concertIdStr + ":waiting";
+        Long count = redisTemplate.opsForZSet().zCard(waitingKey);
+        return count != null ? count : 0L;
+    }
+
+    /**
+     * 특정 콘서트의 현재 입장 완료된 유저 수(ACTIVE)를 조회합니다.
+     */
+    public long getActiveUserCount(String concertIdStr) {
+        String activeKey = "queue:concert:" + concertIdStr + ":active";
+        Long count = redisTemplate.opsForZSet().zCard(activeKey);
+        return count != null ? count : 0L;
+    }
 }
