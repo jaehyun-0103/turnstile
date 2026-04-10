@@ -81,6 +81,33 @@ services:
     networks:
       - turnstile-net
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: turnstile-prometheus
+    restart: always
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - turnstile-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: turnstile-grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - turnstile-net
+
 volumes:
   mysql_data:
   redis_data:

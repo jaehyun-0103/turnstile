@@ -1,6 +1,7 @@
 package com.turnstile.backend.domain.queue.scheduler;
 
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,8 @@ public class QueueScheduler {
     @Value("${queue.policy.active-ttl-seconds:300}")
     private long expirationTime;
 
+    private final MeterRegistry meterRegistry;
+
     /**
      * 주기적으로 대기열을 순회하며 빈자리가 있을 경우 대기자를 활성 상태로 전이시킵니다.
      */
@@ -48,6 +51,10 @@ public class QueueScheduler {
 
             if (enteredUsers != null && !enteredUsers.isEmpty()) {
                 log.info("[Queue] Scheduler Transition | Success (concertId: {}, enteredCount: {})", concertIdStr, enteredUsers.size());
+
+                // 모니터링: 큐를 통과한 유저 수를 카운트 (누적 증가 값)
+                meterRegistry.counter("turnstile.queue.transition.count", "concertId", concertIdStr)
+                        .increment(enteredUsers.size());
             }
         }
     }
