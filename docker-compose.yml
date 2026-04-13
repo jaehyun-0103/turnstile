@@ -52,11 +52,11 @@ services:
       context: ./backend
     container_name: turnstile-api
     restart: on-failure
-#    ports:
-#      - "8080:8080"
+    # ports:
+    #   - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=local # 배포 시 삭제
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/turnstile?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis

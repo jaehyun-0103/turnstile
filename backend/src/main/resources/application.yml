@@ -16,7 +16,7 @@ spring:
   # 2. JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update # 배포 시 수정
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
