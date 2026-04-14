@@ -5,6 +5,7 @@ import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
+import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.service.QueueService;
@@ -77,5 +78,33 @@ class QueueServiceTest {
         assertThat(response1.status()).isEqualTo("ACTIVE");
         assertThat(response1.accessToken()).isEqualTo(expectedToken);
         assertThat(response2.accessToken()).isEqualTo(expectedToken);
+    }
+
+    @Test
+    @DisplayName("이미 ACTIVE 상태인 유저가 대기열 진입 API를 다시 호출하면 기존 상태 그대로 순번 0을 반환해야 한다")
+    void should_return_active_status_and_rank_0_when_already_active_user_enters() {
+        // given: 이미 예매가 오픈된 콘서트 세팅
+        Long userId = 1L;
+        Long concertId = 100L;
+        QueueEntryRequest request = new QueueEntryRequest(concertId);
+
+        Concert openedConcert = Concert.builder()
+                .title("오픈된 콘서트")
+                .ticketingStartAt(LocalDateTime.now().minusMinutes(10)) // 오픈 시간 통과
+                .build();
+
+        given(concertRepository.findById(concertId)).willReturn(Optional.of(openedConcert));
+
+        // Lua 스크립트가 이미 ACTIVE 큐에 존재하는 유저임을 감지하고 -1을 반환
+        given(queueRedisRepository.enterQueue(String.valueOf(concertId), String.valueOf(userId)))
+                .willReturn(-1L);
+
+        // when: 대기열 진입 재시도
+        QueueEntryResponse response = queueService.enterQueue(userId, request);
+
+        // then: 대기열 맨 뒤로 밀리지 않고, 즉시 예매 페이지로 넘어가도록 ACTIVE와 0번 반환
+        assertThat(response.concertId()).isEqualTo(concertId);
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.rank()).isEqualTo(0L);
     }
 }

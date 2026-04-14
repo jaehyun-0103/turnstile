@@ -1,5 +1,9 @@
 package com.turnstile.backend.domain.reservation;
 
+import com.turnstile.backend.domain.concert.entity.Concert;
+import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
+import com.turnstile.backend.domain.concert.entity.Seat;
+import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
@@ -22,6 +26,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * 예약 서비스의 비즈니스 규칙(인가, 수량 제한, 선점 여부) 예외를 검증하는 단위 테스트입니다.
@@ -33,6 +38,7 @@ class ReservationServiceTest {
 
     @Mock private ReservationRepository reservationRepository;
     @Mock private QueueRedisRepository queueRedisRepository;
+    @Mock private SeatRepository seatRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
@@ -121,5 +127,88 @@ class ReservationServiceTest {
         TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
         assertThat(exception.getMessage()).contains("최소 1개");
+    }
+
+    @Test
+    @DisplayName("요청한 좌석 ID 목록 중 존재하지 않는 좌석이 포함되어 있으면 INVALID_INPUT_VALUE 예외가 발생해야 한다")
+    void should_throw_exception_when_requesting_non_existent_seat() {
+        // given: 2개의 좌석을 요청했으나 DB에서는 1개만 조회되는 상황 세팅
+        Long userId = 1L;
+        Long concertId = 100L;
+        List<Long> requestedSeats = List.of(10L, 999L);
+        ReservationRequest request = new ReservationRequest(concertId, requestedSeats);
+
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, concertId, ReservationStatus.PENDING)).willReturn(false);
+        given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
+
+        Seat mockSeat = mock(Seat.class);
+        given(seatRepository.findAllByIdWithScheduleAndConcert(requestedSeats)).willReturn(List.of(mockSeat));
+
+        // when & then: DB 락 획득 전 최전방 차단 검증
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("요청한 좌석들이 서로 다른 회차(Schedule)에 속해 있을 경우 예매가 거부되어야 한다")
+    void should_throw_exception_when_seats_belong_to_different_schedules() {
+        // given: 하나는 1회차, 하나는 2회차 좌석을 교차 예매하려는 시도
+        Long userId = 1L;
+        Long concertId = 100L;
+        List<Long> requestedSeats = List.of(10L, 11L);
+        ReservationRequest request = new ReservationRequest(concertId, requestedSeats);
+
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, concertId, ReservationStatus.PENDING)).willReturn(false);
+        given(queueRedisRepository.isActiveUser(String.valueOf(concertId), String.valueOf(userId))).willReturn(true);
+
+        Seat mockSeat1 = mock(Seat.class);
+        Seat mockSeat2 = mock(Seat.class);
+        ConcertSchedule schedule1 = mock(ConcertSchedule.class);
+        ConcertSchedule schedule2 = mock(ConcertSchedule.class);
+
+        // NPE 방지를 위해 Concert Mock 객체 추가
+        Concert mockConcert = mock(Concert.class);
+        given(mockConcert.getId()).willReturn(concertId);
+        given(schedule1.getConcert()).willReturn(mockConcert);
+        given(schedule2.getConcert()).willReturn(mockConcert);
+
+        given(mockSeat1.getSchedule()).willReturn(schedule1);
+        given(mockSeat2.getSchedule()).willReturn(schedule2);
+        given(schedule1.getId()).willReturn(1L);
+        given(schedule2.getId()).willReturn(2L); // 서로 다른 회차로 세팅
+
+        given(seatRepository.findAllByIdWithScheduleAndConcert(requestedSeats)).willReturn(List.of(mockSeat1, mockSeat2));
+
+        // when & then: 크로스 스케줄 부킹 방어
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("요청한 콘서트 ID와 실제 좌석이 속한 콘서트 ID가 일치하지 않으면 예매가 거부되어야 한다")
+    void should_throw_exception_when_concert_id_mismatches() {
+        // given: 100번 콘서트의 대기열을 통과하고, 200번 콘서트 좌석을 요청하는 우회 공격 시도
+        Long userId = 1L;
+        Long requestedConcertId = 100L;
+        Long actualConcertId = 200L;
+        List<Long> requestedSeats = List.of(10L);
+        ReservationRequest request = new ReservationRequest(requestedConcertId, requestedSeats);
+
+        given(reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, requestedConcertId, ReservationStatus.PENDING)).willReturn(false);
+        given(queueRedisRepository.isActiveUser(String.valueOf(requestedConcertId), String.valueOf(userId))).willReturn(true);
+
+        Seat mockSeat = mock(Seat.class);
+        ConcertSchedule mockSchedule = mock(ConcertSchedule.class);
+        Concert mockConcert = mock(Concert.class);
+
+        given(mockSeat.getSchedule()).willReturn(mockSchedule);
+        given(mockSchedule.getConcert()).willReturn(mockConcert);
+        given(mockConcert.getId()).willReturn(actualConcertId); // 200번
+
+        given(seatRepository.findAllByIdWithScheduleAndConcert(requestedSeats)).willReturn(List.of(mockSeat));
+
+        // when & then
+        TurnstileException exception = assertThrows(TurnstileException.class, () -> reservationService.reserveSeats(userId, request));
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
     }
 }

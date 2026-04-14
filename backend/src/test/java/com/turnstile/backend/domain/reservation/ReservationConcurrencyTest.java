@@ -42,7 +42,7 @@ class ReservationConcurrencyTest {
     @Autowired private RedisTemplate<String, String> redisTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
 
-    // 더미 데이터 기준 상수 (현재 예매 진행 중인 1번 콘서트 사용)
+    // 현재 예매 진행 중인 1번 콘서트 사용
     private final Long TARGET_CONCERT_ID = 1L;
 
     @AfterEach
@@ -141,5 +141,77 @@ class ReservationConcurrencyTest {
         Seat resultSeat1 = seatRepository.findById(availableSeatId).orElseThrow();
         assertThat(resultSeat1.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
         assertThat(resultSeat1.getHoldUserId()).isNull();
+    }
+
+    @Test
+    @DisplayName("연석 교차 경합: 두 유저가 서로 엇갈린 순서의 연석(A: 1->2, B: 2->1)을 동시에 예매 시도해도 교착 상태(Deadlock) 없이 안전하게 한쪽 트랜잭션이 롤백되어야 한다")
+    void should_prevent_deadlock_when_concurrently_reserving_consecutive_seats_in_cross_order() throws Exception {
+        // given: 동일한 콘서트의 1번, 2번 좌석과 경합할 유저 A(1L), 유저 B(2L) 세팅
+        Long targetConcertId = 1L;
+        Long userA = 1L;
+        Long userB = 2L;
+
+        List<Long> requestSeatsA = List.of(1L, 2L); // A는 정방향 요청
+        List<Long> requestSeatsB = List.of(2L, 1L); // B는 역방향 요청
+
+        long expireScore = Instant.now().getEpochSecond() + 300;
+
+        // 두 유저 모두 대기열 통과 상태로 세팅
+        queueRedisRepository.enterQueue(String.valueOf(targetConcertId), String.valueOf(userA));
+        queueRedisRepository.enterQueue(String.valueOf(targetConcertId), String.valueOf(userB));
+        queueRedisRepository.transitionQueue(String.valueOf(targetConcertId), 1000, 1000, expireScore);
+
+        int threadCount = 2;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch readyLatch = new CountDownLatch(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failCount = new AtomicInteger(0);
+
+        // when: User A와 User B가 정확히 동시에 엇갈린 순서로 예약 로직 타격
+        executorService.submit(() -> {
+            try {
+                readyLatch.countDown();
+                startLatch.await();
+                reservationService.reserveSeats(userA, new ReservationRequest(targetConcertId, requestSeatsA));
+                successCount.incrementAndGet();
+            } catch (TurnstileException | InterruptedException e) {
+                failCount.incrementAndGet(); // Fail-Fast 예외 확인
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        executorService.submit(() -> {
+            try {
+                readyLatch.countDown();
+                startLatch.await();
+                reservationService.reserveSeats(userB, new ReservationRequest(targetConcertId, requestSeatsB));
+                successCount.incrementAndGet();
+            } catch (TurnstileException | InterruptedException e) {
+                failCount.incrementAndGet(); // Fail-Fast 예외 확인
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        readyLatch.await();
+        startLatch.countDown(); // 동시 출발 총성
+        doneLatch.await();
+        executorService.shutdown();
+
+        // then: DB 데드락이 발생하지 않고, 한 명은 성공하고 한 명은 깔끔하게 예외로 실패해야 함
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(failCount.get()).isEqualTo(1);
+
+        // then: 두 좌석 모두 한 명의 유저에게만 귀속되어야 함 (트랜잭션 롤백 무결성 보장)
+        Seat seat1 = seatRepository.findById(1L).orElseThrow();
+        Seat seat2 = seatRepository.findById(2L).orElseThrow();
+
+        assertThat(seat1.getStatus()).isEqualTo(SeatStatus.HOLD);
+        assertThat(seat2.getStatus()).isEqualTo(SeatStatus.HOLD);
+        assertThat(seat1.getHoldUserId()).isEqualTo(seat2.getHoldUserId());
     }
 }
