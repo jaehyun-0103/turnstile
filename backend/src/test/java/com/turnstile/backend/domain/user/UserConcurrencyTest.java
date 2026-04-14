@@ -34,7 +34,7 @@ class UserConcurrencyTest {
 
     @AfterEach
     void tearDown() {
-        // [중요] 테스트로 인해 오염된 잔액을 더미 데이터의 초기 상태(0원)로 완벽히 롤백
+        // 테스트로 인해 오염된 잔액을 더미 데이터의 초기 상태(0원)로 완벽히 롤백
         jdbcTemplate.update("UPDATE users SET balance = 0 WHERE id IN (?, ?)", CHARGE_TARGET_USER_ID, DEDUCT_TARGET_USER_ID);
     }
 

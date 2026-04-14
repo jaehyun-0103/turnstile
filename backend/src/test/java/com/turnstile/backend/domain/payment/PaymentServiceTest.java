@@ -88,9 +88,61 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("결제 요청 유저와 예약 소유자가 다를 경우 FORBIDDEN_USER 예외가 발생해야 한다")
+    void should_throw_exception_when_payment_user_does_not_match_reservation_owner() {
+        // given: 예약 소유자는 2L이지만, 결제 요청 유저는 1L
+        String groupId = "test-group";
+        Reservation mockReservation = mock(Reservation.class);
+        User mockUser = mock(User.class);
+
+        given(mockReservation.getUser()).willReturn(mockUser);
+        given(mockUser.getId()).willReturn(2L); // 소유자 식별자
+
+        given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
+
+        PaymentRequest request = new PaymentRequest(groupId, 150000L, 100L);
+
+        // when & then
+        TurnstileException exception = assertThrows(TurnstileException.class,
+                () -> paymentService.processPayment(1L, request)); // 1L 유저가 결제 시도
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN_USER);
+    }
+
+    @Test
+    @DisplayName("예약에 기록된 콘서트 ID와 결제 요청의 콘서트 ID가 다를 경우 INVALID_INPUT_VALUE 예외가 발생해야 한다")
+    void should_throw_exception_when_concert_id_mismatches() {
+        // given: 실제 예약된 콘서트는 200L이지만, 다른 콘서트 대기열(100L) 토큰으로 접근 시도
+        String groupId = "test-group";
+        Reservation mockReservation = mock(Reservation.class);
+        Seat mockSeat = mock(Seat.class);
+        ConcertSchedule mockSchedule = mock(ConcertSchedule.class);
+        Concert mockConcert = mock(Concert.class);
+        User mockUser = mock(User.class);
+
+        given(mockReservation.getUser()).willReturn(mockUser);
+        given(mockUser.getId()).willReturn(1L);
+
+        given(mockReservation.getSeat()).willReturn(mockSeat);
+        given(mockSeat.getSchedule()).willReturn(mockSchedule);
+        given(mockSchedule.getConcert()).willReturn(mockConcert);
+        given(mockConcert.getId()).willReturn(200L); // 실제 콘서트 ID
+
+        given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
+
+        PaymentRequest request = new PaymentRequest(groupId, 150000L, 100L); // 요청 콘서트 ID 조작
+
+        // when & then
+        TurnstileException exception = assertThrows(TurnstileException.class,
+                () -> paymentService.processPayment(1L, request));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
     @DisplayName("요청 금액과 실제 예약 금액의 총합이 다를 경우 PAYMENT_AMOUNT_MISMATCH 예외가 발생해야 한다")
     void should_throw_exception_when_amount_mismatches() {
-        // given: 금액 검증 단계까지 살아서 가기 위해 Concert 연관관계 세팅
+        // given: 금액 검증 단계까지 가기 위해 Concert 연관관계 세팅
         String groupId = "test-group";
         Reservation mockReservation = mock(Reservation.class);
         Seat mockSeat = mock(Seat.class);
@@ -117,5 +169,39 @@ class PaymentServiceTest {
         TurnstileException exception = assertThrows(TurnstileException.class,
                 () -> paymentService.processPayment(1L, request));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("이미 PAID 상태이거나 EXPIRED 상태인 예약 건에 대해 결제 시도 시 ALREADY_PAID 예외가 발생해야 한다")
+    void should_throw_exception_when_reservation_is_already_paid_or_expired() {
+        // given: 검증을 모두 통과했으나, CAS 업데이트 쿼리 결과가 0
+        String groupId = "test-group";
+        Reservation mockReservation = mock(Reservation.class);
+        Seat mockSeat = mock(Seat.class);
+        ConcertSchedule mockSchedule = mock(ConcertSchedule.class);
+        Concert mockConcert = mock(Concert.class);
+        User mockUser = mock(User.class);
+
+        given(mockReservation.getUser()).willReturn(mockUser);
+        given(mockUser.getId()).willReturn(1L);
+
+        given(mockReservation.getPrice()).willReturn(150000L);
+        given(mockReservation.getSeat()).willReturn(mockSeat);
+        given(mockSeat.getSchedule()).willReturn(mockSchedule);
+        given(mockSchedule.getConcert()).willReturn(mockConcert);
+        given(mockConcert.getId()).willReturn(100L);
+
+        given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
+
+        // PENDING 상태인 예약이 없어 업데이트된 row 수가 0 반환
+        given(reservationRepository.confirmReservations(groupId)).willReturn(0);
+
+        PaymentRequest request = new PaymentRequest(groupId, 150000L, 100L);
+
+        // when & then
+        TurnstileException exception = assertThrows(TurnstileException.class,
+                () -> paymentService.processPayment(1L, request));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ALREADY_PAID);
     }
 }

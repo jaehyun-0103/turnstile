@@ -9,10 +9,16 @@ import com.turnstile.backend.domain.payment.service.PaymentService;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.repository.UserRepository;
+import com.turnstile.backend.global.exception.TurnstileException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -68,5 +74,66 @@ class PaymentIntegrationTest {
 
         // then: 예약 상태가 PAID로 변경되었는지 검증
         assertThat(reservationRepository.findAllByGroupIdWithSeat(testGroupId).getFirst().getStatus()).isEqualTo(ReservationStatus.PAID);
+    }
+
+    @Test
+    @DisplayName("이중 결제 방어: 동일한 예약 그룹(groupId)에 대해 동시에 10번의 결제 요청이 들어와도 단 1번만 승인되고 결제 이력도 1개만 생성되어야 한다")
+    void should_prevent_double_payment_under_concurrent_requests() throws InterruptedException {
+        // given: 2번 유저, 20번 좌석 세팅
+        Long targetUserId = 2L;
+        Long targetSeatId = 20L;
+        Long targetConcertId = 1L;
+        String testGroupId = "integration-group-concurrent";
+        Long seatPrice = 150000L;
+
+        jdbcTemplate.update("UPDATE seat SET status = 'HOLD', hold_user_id = ?, hold_expires_at = DATE_ADD(NOW(6), INTERVAL 5 MINUTE) WHERE id = ?", targetUserId, targetSeatId);
+        jdbcTemplate.update("INSERT INTO reservation (group_id, user_id, seat_id, price, status, reserved_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', NOW(6), NOW(6), NOW(6))",
+                testGroupId, targetUserId, targetSeatId, seatPrice);
+
+        PaymentRequest request = new PaymentRequest(testGroupId, seatPrice, targetConcertId);
+
+        int threadCount = 10;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch readyLatch = new CountDownLatch(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger();
+        AtomicInteger failCount = new AtomicInteger();
+
+        // when: 10개의 스레드가 동시에 동일한 결제 요청을 시도
+        for (int i = 0; i < threadCount; i++) {
+            executorService.execute(() -> {
+                try {
+                    readyLatch.countDown();
+                    startLatch.await(); // 시작 신호 대기
+                    paymentService.processPayment(targetUserId, request);
+                    successCount.incrementAndGet();
+                } catch (TurnstileException e) {
+                    failCount.incrementAndGet(); // ALREADY_PAID 등 멱등성 방어 예외
+                } catch (Exception e) {
+                    failCount.incrementAndGet();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        readyLatch.await();
+        startLatch.countDown(); // 모든 스레드 동시 출발
+        doneLatch.await();
+        executorService.shutdown();
+
+        // then: 정확히 1번만 결제 성공, 9번은 실패해야 함
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(failCount.get()).isEqualTo(threadCount - 1);
+
+        // then: 결제 이력 테이블(Payment)에도 단 1개의 레코드만 존재해야 함
+        long paymentRecordCount = paymentRepository.count();
+        assertThat(paymentRecordCount).isEqualTo(1L);
+
+        // then: 잔액도 중복 차감 없이 딱 1회분만 깎여야 함 (500,000 - 150,000 = 350,000)
+        Long currentBalance = userRepository.findById(targetUserId).orElseThrow().getBalance();
+        assertThat(currentBalance).isEqualTo(350000L);
     }
 }
