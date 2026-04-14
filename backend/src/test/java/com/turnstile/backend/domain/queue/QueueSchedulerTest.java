@@ -3,9 +3,13 @@ package com.turnstile.backend.domain.queue;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.scheduler.QueueScheduler;
 import com.turnstile.backend.global.config.RedisConfig;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.redis.DataRedisTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -23,6 +27,15 @@ class QueueSchedulerTest {
 
     @Autowired private QueueScheduler queueScheduler;
     @Autowired private RedisTemplate<String, String> redisTemplate;
+
+    // 내부 설정 클래스
+    @TestConfiguration
+    static class TestMetricsConfig {
+        @Bean
+        public MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+    }
 
     private static final Long TARGET_CONCERT_ID = 1L;
     private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
