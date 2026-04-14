@@ -1,4 +1,4 @@
-package com.turnstile.backend.global.event;
+package com.turnstile.backend.global;
 
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.service.PaymentService;
@@ -6,6 +6,7 @@ import com.turnstile.backend.domain.queue.event.UserTicketingCompletedEvent;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
+import com.turnstile.backend.global.event.SeatCacheEvictEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
