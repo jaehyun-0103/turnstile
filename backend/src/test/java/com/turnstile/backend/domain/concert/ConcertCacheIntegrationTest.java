@@ -53,7 +53,7 @@ class ConcertCacheIntegrationTest {
         concertService.getSeats(TARGET_SCHEDULE_ID); // 3rd: Cache Hit
 
         // then: DB 실제 조회는 단 1번만 일어났음을 스파이 객체를 통해 검증
-        verify(seatRepository, times(1)).findAllByScheduleId(TARGET_SCHEDULE_ID);
+        verify(seatRepository, times(1)).findAllBySchedule_Id(TARGET_SCHEDULE_ID);
     }
 
     @Test
