@@ -49,7 +49,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "JOIN FETCH sc.concert c " +
             "WHERE r.user.id = :userId " +
             "ORDER BY r.reservedAt DESC")
-    List<Reservation> findAllByUserIdWithDetails(@Param("userId") Long userId);
+    List<Reservation> findAllByUserIdWithSeatAndSchedule(@Param("userId") Long userId);
 
     /**
      * 특정 시간 이전에 'EXPIRED' 상태가 된 예약 데이터들을 일괄 삭제합니다.

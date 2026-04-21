@@ -17,10 +17,6 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
      */
     @Nonnull
     @Override
-    @Cacheable(
-            cacheNames = "concert:info",
-            key = "#id",
-            unless = "#result == null"
-    )
+    @Cacheable(cacheNames = "concert:info", key = "#id", unless = "#result == null")
     Optional<Concert> findById(@Nonnull Long id);
 }

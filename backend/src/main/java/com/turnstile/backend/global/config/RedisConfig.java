@@ -62,13 +62,13 @@ public class RedisConfig {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        // 직렬화 규칙 설정
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module());
         objectMapper.registerModule(new ParameterNamesModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        // 캐시 데이터 역직렬화 시 구체적인 객체 타입을 식별하기 위해 타입 정보를 함께 저장하도록 설정
         objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfSubType("com.turnstile.backend")
@@ -82,18 +82,20 @@ public class RedisConfig {
 
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
+        // Redis 캐시 기본 정책 설정
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
-                // CacheEvictor에서 관리하는 키 패턴과 일치하도록 구분자 설정
-                .computePrefixWith(cacheName -> cacheName + ":");
+                .computePrefixWith(cacheName -> cacheName + ":"); // CacheEvictor에서 관리하는 키 패턴과 일치하도록 구분자 설정
 
+        // 캐시별 TTL 전략 설정
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         cacheConfigurations.put("concert:info", defaultConfig.entryTtl(Duration.ofHours(1)));
         cacheConfigurations.put("concert:schedules", defaultConfig.entryTtl(Duration.ofHours(1)));
         cacheConfigurations.put("concert:schedule", defaultConfig.entryTtl(Duration.ofMinutes(1)));
 
+        // 위의 설정을 합쳐 Redis 캐시 시스템 완성
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigurations)

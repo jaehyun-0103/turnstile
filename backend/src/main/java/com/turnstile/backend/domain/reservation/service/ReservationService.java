@@ -166,7 +166,7 @@ public class ReservationService {
      */
     @Transactional(readOnly = true)
     public List<MyReservationResponse> getMyReservations(Long userId) {
-        List<MyReservationResponse> responses = reservationRepository.findAllByUserIdWithDetails(userId).stream()
+        List<MyReservationResponse> responses = reservationRepository.findAllByUserIdWithSeatAndSchedule(userId).stream()
                 .map(r -> new MyReservationResponse(
                         r.getId(),
                         r.getGroupId(),
