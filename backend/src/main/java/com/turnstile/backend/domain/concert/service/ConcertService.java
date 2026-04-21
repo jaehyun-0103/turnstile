@@ -55,7 +55,7 @@ public class ConcertService {
 
         log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_schedules, concertId: {})", concertId);
 
-        return concertScheduleRepository.findAllByConcertId(concertId).stream()
+        return concertScheduleRepository.findAllByConcert_Id(concertId).stream()
                 .map(ConcertScheduleResponse::from)
                 .toList();
     }
@@ -73,7 +73,7 @@ public class ConcertService {
 
         log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_seats, scheduleId: {})", scheduleId);
 
-        List<SeatResponse> seats = seatRepository.findAllByScheduleId(scheduleId).stream()
+        List<SeatResponse> seats = seatRepository.findAllBySchedule_Id(scheduleId).stream()
                 .map(SeatResponse::from)
                 .toList();
 
