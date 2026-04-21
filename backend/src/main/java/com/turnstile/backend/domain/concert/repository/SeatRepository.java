@@ -14,14 +14,14 @@ import java.util.List;
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
     // scheduleId 필드로 Seat 조회
-    List<Seat> findAllByScheduleId(Long scheduleId);
+    List<Seat> findAllBySchedule_Id(Long scheduleId);
 
     // 한 번의 쿼리로 여러 좌석을 점유(HOLD)함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Seat s " +
             "SET s.status = 'HOLD', s.holdUserId = :userId, s.holdExpiresAt = :expiresAt " +
-            "WHERE s.id IN :seatId AND s.status = 'AVAILABLE'")
-    int holdSeatsConditionally(@Param("seatId") List<Long> seatId,
+            "WHERE s.id IN :seatIds AND s.status = 'AVAILABLE'")
+    int holdSeatsConditionally(@Param("seatIds") List<Long> seatIds,
                               @Param("userId") Long userId,
                               @Param("expiresAt") LocalDateTime expiresAt);
 
