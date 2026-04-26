@@ -9,12 +9,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 로컬 개발 및 통합 테스트 환경에서 사용할 기준(Mock) 데이터를 자동 삽입하는 초기화 클래스입니다.
  * 컨테이너 재빌드 없이도 다양한 예매 시나리오(오픈 전, 예매 중, 종료)를 검증할 수 있도록 다중 콘서트를 구성합니다.
  */
 @Slf4j
-@Profile("local") // 운영 환경에서 실수로 실행되지 않도록 격리
+@Profile({"local", "perf"}) // 운영 환경에서 실수로 실행되지 않도록 격리
 @Component
 @RequiredArgsConstructor
 public class DummyDataInitializer implements ApplicationRunner {
@@ -34,10 +37,16 @@ public class DummyDataInitializer implements ApplicationRunner {
         log.info("[Global] Dummy Data Init | Started (Target: 100 Users, 4 Concerts, 200 Seats)");
 
         // 유저 100명 삽입 (1~90번은 잔액 50만 원, 91~100번은 잔액 0원으로 경계값 테스트 구성)
-        String insertUsersSql = "INSERT INTO users (username, name, balance, created_at, updated_at) " +
-                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 100) " +
-                "SELECT CONCAT('user', n), CONCAT('테스터', n), IF(n <= 90, 500000, 0), NOW(6), NOW(6) FROM cte";
-        jdbcTemplate.execute(insertUsersSql);
+        List<Object[]> userBatchArgs = new ArrayList<>();
+        for (int i = 1; i <= 10000; i++) {
+            // 1~9000번은 잔액 50만 원, 9001~10000번은 잔액 0원
+            long balance = (i <= 9000) ? 500000L : 0L;
+            userBatchArgs.add(new Object[]{"user" + i, "테스터" + i, balance});
+        }
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO users (username, name, balance, created_at, updated_at) VALUES (?, ?, ?, NOW(6), NOW(6))",
+                userBatchArgs
+        );
 
         // 상태별 콘서트 3종 삽입 (진행 중 / 과거 종료 / 미래 오픈 예정)
         String insertConcertsSql = "INSERT INTO concert (id, title, description, ticketing_start_at, created_at, updated_at) VALUES " +
