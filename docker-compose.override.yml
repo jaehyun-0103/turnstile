@@ -1,0 +1,18 @@
+services:
+  mysql:
+    ports:
+      - "3307:3306"
+
+  redis:
+    ports:
+      - "6380:6379"
+
+  turnstile-api:
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+
+  frontend:
+    ports:
+      - "80:80"

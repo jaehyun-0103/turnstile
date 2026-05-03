@@ -1,0 +1,51 @@
+spring:
+  config:
+    activate:
+      on-profile: perf
+
+  # 1. DB 커넥션 풀 증설
+  datasource:
+    hikari:
+      maximum-pool-size: 40  # batch-size(100)를 감당하기 위해 기존 10에서 증설
+      minimum-idle: 20
+      connection-timeout: 5000
+
+  # 2. JPA 로그 비활성화
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+  # 3. Redis 타임아웃 조정
+  data:
+    redis:
+      timeout: 5000
+
+# 4. WAS 쓰레드 최적화
+server:
+  tomcat:
+    threads:
+      max: 400         # 기본 200에서 2배 증설
+    accept-count: 200  # 쓰레드가 꽉 찼을 때 대기열 크기
+    max-connections: 8192 # 동시에 유지할 수 있는 커넥션 수 상향
+
+# 로깅 레벨 조정
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: info
+    org.springframework.web: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, metrics, health # prometheus 엔드포인트 필수
+  metrics:
+    tags:
+      application: turnstile-api # Grafana 변수 필터링용
+    export:
+      prometheus:
+        enabled: true

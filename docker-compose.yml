@@ -5,8 +5,6 @@ services:
     restart: always
     env_file:
       - .env
-    ports:
-      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command:
@@ -28,8 +26,6 @@ services:
     image: redis:7.4-alpine
     container_name: turnstile-redis
     restart: always
-    ports:
-      - "6380:6379"
     volumes:
       - redis_data:/data
     command: [
@@ -52,10 +48,7 @@ services:
       context: ./backend
     container_name: turnstile-api
     restart: on-failure
-    # ports:
-    #   - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=local
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
@@ -74,16 +67,16 @@ services:
       context: ./frontend
     container_name: turnstile-frontend
     restart: always
-    ports:
-      - "80:80"
     depends_on:
       - turnstile-api
     networks:
       - turnstile-net
 
+  # profiles: ["monitor"]
   prometheus:
     image: prom/prometheus:latest
     container_name: turnstile-prometheus
+    profiles: ["monitor"]
     restart: always
     volumes:
       - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -95,6 +88,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: turnstile-grafana
+    profiles: ["monitor"]
     restart: always
     ports:
       - "3000:3000"
@@ -107,6 +101,29 @@ services:
       - prometheus
     networks:
       - turnstile-net
+
+  redis-exporter:
+    image: oliver006/redis_exporter
+    container_name: turnstile-redis-exporter
+    profiles: ["monitor"]
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    networks:
+      - turnstile-net
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.14.0
+    container_name: turnstile-mysql-exporter
+    profiles: ["monitor"]
+    env_file:
+      - .env
+    environment:
+      - DATA_SOURCE_NAME=root:1234@tcp(mysql:3306)/
+    networks:
+      - turnstile-net
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:

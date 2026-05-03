@@ -1,3 +1,8 @@
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
 spring:
   application:
     name: turnstile-api
@@ -12,6 +17,7 @@ spring:
     password: 1234
     hikari:
       connection-timeout: 3000 # HikariCP DB 커넥션 획득 대기 시간 3초로 제한 (기본값 30초)
+      pool-name: TurnstileHikariPoo
 
   # 2. JPA 설정
   jpa:
@@ -45,6 +51,8 @@ management:
   metrics:
     tags:
       application: turnstile-api
+    enable:
+      hikaricp: true
 
 jwt:
   secret: "turnstile-ticketing-system-secret-key"

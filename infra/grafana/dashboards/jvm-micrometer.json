@@ -43,7 +43,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 8
       },
       "id": 139,
       "panels": [],
@@ -89,7 +89,7 @@
         "h": 3,
         "w": 6,
         "x": 0,
-        "y": 1
+        "y": 9
       },
       "id": 63,
       "maxDataPoints": 100,
@@ -166,7 +166,7 @@
         "h": 3,
         "w": 6,
         "x": 6,
-        "y": 1
+        "y": 9
       },
       "id": 92,
       "maxDataPoints": 100,
@@ -250,7 +250,7 @@
         "h": 3,
         "w": 6,
         "x": 12,
-        "y": 1
+        "y": 9
       },
       "id": 65,
       "maxDataPoints": 100,
@@ -343,7 +343,7 @@
         "h": 3,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 9
       },
       "id": 75,
       "maxDataPoints": 100,
@@ -387,7 +387,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 12
       },
       "id": 140,
       "panels": [],
@@ -460,7 +460,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 5
+        "y": 13
       },
       "id": 111,
       "options": {
@@ -591,7 +591,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 5
+        "y": 13
       },
       "id": 112,
       "options": {
@@ -691,7 +691,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 5
+        "y": 13
       },
       "id": 113,
       "options": {
@@ -801,7 +801,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 5
+        "y": 13
       },
       "id": 119,
       "options": {
@@ -891,7 +891,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 20
       },
       "id": 141,
       "panels": [],
@@ -962,9 +962,9 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 6,
+        "w": 8,
         "x": 0,
-        "y": 13
+        "y": 21
       },
       "id": 24,
       "options": {
@@ -1087,9 +1087,9 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 6,
-        "x": 6,
-        "y": 13
+        "w": 8,
+        "x": 8,
+        "y": 21
       },
       "id": 25,
       "options": {
@@ -1213,9 +1213,9 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 6,
-        "x": 12,
-        "y": 13
+        "w": 8,
+        "x": 16,
+        "y": 21
       },
       "id": 26,
       "options": {
@@ -1275,141 +1275,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 13
-      },
-      "id": 86,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "uid": "Prometheus"
-          },
-          "expr": "process_memory_vss_bytes{application=\"$application\", instance=\"$instance\"}",
-          "format": "time_series",
-          "hide": true,
-          "intervalFactor": 2,
-          "legendFormat": "vss",
-          "metric": "",
-          "refId": "A",
-          "step": 2400
-        },
-        {
-          "datasource": {
-            "uid": "Prometheus"
-          },
-          "expr": "process_memory_rss_bytes{application=\"$application\", instance=\"$instance\"}",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "rss",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "uid": "Prometheus"
-          },
-          "expr": "process_memory_swap_bytes{application=\"$application\", instance=\"$instance\"}",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "swap",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "uid": "Prometheus"
-          },
-          "expr": "process_memory_rss_bytes{application=\"$application\", instance=\"$instance\"} + process_memory_swap_bytes{application=\"$application\", instance=\"$instance\"}",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "total",
-          "refId": "D"
-        }
-      ],
-      "title": "JVM Process Memory",
-      "type": "timeseries"
-    },
-    {
-      "title": "턴스타일 대기열 현황 (Queue Status)",
+      "title": "대기열 현황 (Queue Status)",
       "type": "timeseries",
       "datasource": { "uid": "Prometheus" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
@@ -1446,7 +1312,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 28
       },
       "id": 142,
       "panels": [],
@@ -1521,7 +1387,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 21
+        "y": 29
       },
       "id": 106,
       "options": {
@@ -1645,7 +1511,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 21
+        "y": 29
       },
       "id": 93,
       "options": {
@@ -1759,7 +1625,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 21
+        "y": 29
       },
       "id": 32,
       "options": {
@@ -1987,7 +1853,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 21
+        "y": 29
       },
       "id": 124,
       "options": {
@@ -2035,7 +1901,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 28
+        "y": 36
       },
       "id": 138,
       "options": {},
@@ -2066,7 +1932,7 @@
         "h": 7,
         "w": 12,
         "x": 6,
-        "y": 28
+        "y": 36
       },
       "id": 91,
       "options": {},
@@ -2100,7 +1966,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 28
+        "y": 36
       },
       "id": 61,
       "options": {},
@@ -2139,7 +2005,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 43
       },
       "id": 143,
       "panels": [],
@@ -2159,7 +2025,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 44
       },
       "id": 3,
       "maxPerRow": 3,
@@ -2216,7 +2082,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 51
       },
       "id": 144,
       "panels": [],
@@ -2235,10 +2101,10 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 52
       },
       "id": 78,
-      "maxPerRow": 3,
+      "maxPerRow": 5,
       "options": {},
       "repeat": "jvm_memory_pool_nonheap",
       "repeatDirection": "h",
@@ -2292,7 +2158,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 59
       },
       "id": 145,
       "panels": [],
@@ -2311,7 +2177,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 52
+        "y": 60
       },
       "id": 98,
       "options": {},
@@ -2342,7 +2208,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 52
+        "y": 60
       },
       "id": 101,
       "options": {},
@@ -2385,7 +2251,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 52
+        "y": 60
       },
       "id": 99,
       "options": {},
@@ -2422,7 +2288,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 67
       },
       "id": 146,
       "panels": [],
@@ -2441,7 +2307,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 60
+        "y": 68
       },
       "id": 37,
       "options": {},
@@ -2474,7 +2340,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 60
+        "y": 68
       },
       "id": 38,
       "options": {},
@@ -2502,7 +2368,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 75
       },
       "id": 147,
       "panels": [],
@@ -2521,7 +2387,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 76
       },
       "id": 131,
       "maxPerRow": 3,
@@ -2562,6 +2428,68 @@
       ],
       "title": "$jvm_buffer_pool",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 83
+      },
+      "id": 200,
+      "panels": [],
+      "title": "Database & Cache Resources (Performance Focus)",
+      "type": "row"
+    },
+    {
+      "title": "DB 커넥션 풀 (HikariCP)",
+      "type": "timeseries",
+      "datasource": { "uid": "Prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 84
+      },
+      "id": 201,
+      "targets": [
+        { "expr": "hikaricp_connections_active{application=\"$application\"}", "legendFormat": "Active (사용 중)", "refId": "A" },
+        { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "Pending (대기 중)", "refId": "B" },
+        { "expr": "hikaricp_connections_max{application=\"$application\"}", "legendFormat": "Max Limit", "refId": "C" }
+      ]
+    },
+    {
+      "title": "Redis 리소스 (Memory & CPU)",
+      "type": "timeseries",
+      "datasource": { "uid": "Prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 84
+      },
+      "id": 202,
+      "targets": [
+        { "expr": "redis_memory_used_bytes", "legendFormat": "Used Memory", "refId": "A" },
+        { "expr": "rate(redis_cpu_user_seconds_total[1m])", "legendFormat": "CPU Usage (Rate)", "refId": "B" }
+      ]
+    },
+    {
+      "title": "MySQL 성능 (Threads & Locks)",
+      "type": "timeseries",
+      "datasource": { "uid": "Prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 84
+      },
+      "id": 203,
+      "targets": [
+        { "expr": "mysql_global_status_threads_connected", "legendFormat": "Connected Threads", "refId": "A" },
+        { "expr": "rate(mysql_global_status_innodb_row_lock_time[1m])", "legendFormat": "InnoDB Lock Time", "refId": "B" }
+      ]
     }
   ],
   "preload": false,
@@ -2660,7 +2588,7 @@
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
