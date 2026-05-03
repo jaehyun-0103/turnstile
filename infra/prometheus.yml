@@ -1,14 +1,17 @@
 global:
-  # 5초마다 Spring Boot에 접근해서 데이터를 긁어옵니다.
+  # 5초마다 Spring Boot에 접근해서 데이터를 긁어옴
   scrape_interval: 5s
 
 scrape_configs:
-  # 수집 작업 이름
-  - job_name: 'turnstile-spring-boot'
-
-    # 지표가 노출되어 있는 URI 경로
+  - job_name: 'turnstile-api'
     metrics_path: '/actuator/prometheus'
-
     static_configs:
-      # 대상 지정
       - targets: ['turnstile-api:8080']
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: [ 'turnstile-redis-exporter:9121' ]
+
+  - job_name: 'mysql-exporter'
+    static_configs:
+      - targets: [ 'turnstile-mysql-exporter:9104' ]
