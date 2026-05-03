@@ -37,3 +37,15 @@ logging:
     root: info
     org.hibernate.SQL: info
     org.springframework.web: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, metrics, health # prometheus 엔드포인트 필수
+  metrics:
+    tags:
+      application: turnstile-api # Grafana 변수 필터링용
+    export:
+      prometheus:
+        enabled: true

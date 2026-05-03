@@ -1,9 +1,5 @@
 services:
   turnstile-api:
-    build:
-      context: ./backend
-    container_name: turnstile-api
-    restart: on-failure
     ports:
       - "8080:8080"
     ulimits:
@@ -12,15 +8,29 @@ services:
         hard: 65535
     environment:
       - SPRING_PROFILES_ACTIVE=perf
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
-      - SPRING_DATASOURCE_USERNAME=${DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATA_REDIS_PORT=6379
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+
+  ngrinder-controller:
+    image: ngrinder/controller:3.5.8
+    container_name: turnstile-ngrinder-controller
+    restart: always
+    ports:
+      - "8000:80"
+      - "16001:16001"
+      - "12000-12009:12000-12009"
+    volumes:
+      - ngrinder_data:/opt/ngrinder-controller
     networks:
       - turnstile-net
+
+  ngrinder-agent:
+    image: ngrinder/agent:3.5.8
+    container_name: turnstile-ngrinder-agent
+    restart: always
+    command: [ "turnstile-ngrinder-controller:80" ]
+    depends_on:
+      - ngrinder-controller
+    networks:
+      - turnstile-net
+
+volumes:
+  ngrinder_data:

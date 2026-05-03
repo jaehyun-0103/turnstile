@@ -7,7 +7,7 @@ spring:
   # 1. MySQL 설정 (Docker: 3307 포트)
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3307/turnstile?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://mysql:3306/turnstile?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: root
     password: 1234
     hikari:
@@ -25,7 +25,7 @@ spring:
   # 3. Redis 설정 (Docker: 6380 포트)
   data:
     redis:
-      host: localhost
+      host: redis
       port: 6380
       timeout: 2000 # Redis 응답 대기 시간 2초로 제한
 

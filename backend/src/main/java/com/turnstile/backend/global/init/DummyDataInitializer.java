@@ -34,7 +34,7 @@ public class DummyDataInitializer implements ApplicationRunner {
             return;
         }
 
-        log.info("[Global] Dummy Data Init | Started (Target: 100 Users, 4 Concerts, 200 Seats)");
+        log.info("[Global] Dummy Data Init | Started (Target: 10000 Users, 4 Concerts, 200 Seats)");
 
         // 유저 100명 삽입 (1~90번은 잔액 50만 원, 91~100번은 잔액 0원으로 경계값 테스트 구성)
         List<Object[]> userBatchArgs = new ArrayList<>();
@@ -73,6 +73,6 @@ public class DummyDataInitializer implements ApplicationRunner {
                 "SELECT 4, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertSeatsSql);
 
-        log.info("[Global] Dummy Data Init | Success (Inserted: 100 Users, 4 Concerts, 4 Schedules, 200 Seats)");
+        log.info("[Global] Dummy Data Init | Success (Inserted: 10000 Users, 4 Concerts, 4 Schedules, 200 Seats)");
     }
 }
