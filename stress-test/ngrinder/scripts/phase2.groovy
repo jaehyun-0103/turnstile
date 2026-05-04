@@ -32,7 +32,7 @@ class TurnstileTicketingTest {
 
     public static GTest testReserve, testPayment
     public static HTTPRequest reqReserve, reqPayment
-    public static String baseUrl = "http://127.0.0.1:8080"
+    public static String baseUrl = "http://host.docker.internal:8080"
 
     /**
      * 전체 테스트 프로세스 시작 전 실행 (테스트 지표 및 요청 객체 초기화)
