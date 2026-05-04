@@ -573,7 +573,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "HTTP - 5xx"
+              "options": "HTTP - 4xx/5xx"
             },
             "properties": [
               {
@@ -615,10 +615,9 @@
           "datasource": {
             "uid": "Prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\", instance=\"$instance\", status=~\"5..\"}[1m]))",
-          "format": "time_series",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\", instance=\"$instance\", status=~\"4..|5..\"}[1m]))",          "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "HTTP - 5xx",
+          "legendFormat": "HTTP - 4xx/5xx",
           "refId": "A"
         }
       ],

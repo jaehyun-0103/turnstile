@@ -31,7 +31,7 @@ class TurnstileIntegratedTest {
     // 테스트 지표 측정을 위한 GTest 객체 정의
     public static GTest testLogin, testEntry, testStatus, testSeats
     public static HTTPRequest reqLogin, reqEntry, reqStatus, reqSeats
-    public static String baseUrl = "http://127.0.0.1:8080"
+    public static String baseUrl = "http://host.docker.internal:8080"
 
     /**
      * 전체 테스트 프로세스 시작 전 실행 (공통 자원 및 테스트 객체 초기화)
