@@ -283,7 +283,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 12
       },
       "id": 140,
       "panels": [],
@@ -356,7 +356,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 21
+        "y": 13
       },
       "id": 111,
       "options": {
@@ -485,7 +485,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 21
+        "y": 13
       },
       "id": 112,
       "options": {
@@ -583,7 +583,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 21
+        "y": 13
       },
       "id": 113,
       "options": {
@@ -691,7 +691,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 21
+        "y": 13
       },
       "id": 119,
       "options": {
@@ -779,7 +779,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 43
       },
       "id": 141,
       "panels": [],
@@ -852,7 +852,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 44
       },
       "id": 24,
       "options": {
@@ -974,7 +974,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 44
       },
       "id": 25,
       "options": {
@@ -1097,7 +1097,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 44
       },
       "id": 26,
       "options": {
@@ -1159,7 +1159,7 @@
       "datasource": { "uid": "Prometheus" },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 4
       },
@@ -1198,9 +1198,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 12
+        "w": 12,
+        "x": 12,
+        "y": 4
       },
       "id": 100000,
       "targets": [
@@ -1245,7 +1245,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 35
       },
       "id": 142,
       "panels": [],
@@ -1320,7 +1320,7 @@
         "h": 7,
         "w": 5,
         "x": 0,
-        "y": 38
+        "y": 36
       },
       "id": 106,
       "options": {
@@ -1441,7 +1441,7 @@
         "h": 7,
         "w": 5,
         "x": 5,
-        "y": 38
+        "y": 36
       },
       "id": 32,
       "options": {
@@ -1666,7 +1666,7 @@
         "h": 7,
         "w": 5,
         "x": 10,
-        "y": 38
+        "y": 36
       },
       "id": 124,
       "options": {
@@ -1711,7 +1711,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 53
+        "y": 51
       },
       "id": 138,
       "options": {},
@@ -1742,7 +1742,7 @@
         "h": 7,
         "w": 4,
         "x": 20,
-        "y": 38
+        "y": 36
       },
       "id": 91,
       "options": {},
@@ -1776,7 +1776,7 @@
         "h": 7,
         "w": 5,
         "x": 15,
-        "y": 38
+        "y": 36
       },
       "id": 61,
       "options": {},
@@ -1821,7 +1821,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 53
+        "y": 51
       },
       "id": 98,
       "options": {},
@@ -1852,7 +1852,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 53
+        "y": 51
       },
       "id": 101,
       "options": {},
@@ -1892,10 +1892,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 29
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 28
       },
       "id": 131,
       "maxPerRow": 3,
@@ -1941,7 +1941,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 20
       },
       "id": 200,
       "panels": [],
@@ -1953,10 +1953,10 @@
       "type": "timeseries",
       "datasource": { "uid": "Prometheus" },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 29
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 21
       },
       "id": 201,
       "targets": [
@@ -1970,10 +1970,10 @@
       "type": "timeseries",
       "datasource": { "uid": "Prometheus" },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 29
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 28
       },
       "id": 202,
       "targets": [
@@ -1986,16 +1986,70 @@
       "type": "timeseries",
       "datasource": { "uid": "Prometheus" },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 29
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 21
       },
       "id": 203,
       "targets": [
         { "expr": "mysql_global_status_threads_connected", "legendFormat": "Connected Threads", "refId": "A" },
         { "expr": "rate(mysql_global_status_innodb_row_lock_time[1m])", "legendFormat": "InnoDB Lock Time", "refId": "B" }
       ]
+    },
+    {
+      "title": "Redis QPS (Commands/sec)",
+      "type": "timeseries",
+      "datasource": { "uid": "Prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 28
+      },
+      "id": 301,
+      "targets": [
+        {
+          "expr": "sum(rate(redis_commands_total[$__rate_interval]))",
+          "legendFormat": "Redis QPS",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "MySQL QPS (Queries/sec)",
+      "type": "timeseries",
+      "datasource": { "uid": "Prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 21
+      },
+      "id": 302,
+      "targets": [
+        {
+          "expr": "sum(rate(mysql_global_status_queries[$__rate_interval]))",
+          "legendFormat": "MySQL QPS",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      }
     }
   ],
   "preload": false,
