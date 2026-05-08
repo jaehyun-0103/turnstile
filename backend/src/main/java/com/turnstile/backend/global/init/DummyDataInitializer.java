@@ -34,9 +34,9 @@ public class DummyDataInitializer implements ApplicationRunner {
             return;
         }
 
-        log.info("[Global] Dummy Data Init | Started (Target: 10000 Users, 4 Concerts, 200 Seats)");
+        log.info("[Global] Dummy Data Init | Started (Target: 10000 Users, 4 Concerts, 2000 Seats)");
 
-        // 유저 100명 삽입 (1~90번은 잔액 50만 원, 91~100번은 잔액 0원으로 경계값 테스트 구성)
+        // 유저 10000명 삽입 (1~9000번은 잔액 50만 원, 9001~10000번은 잔액 0원으로 경계값 테스트 구성)
         List<Object[]> userBatchArgs = new ArrayList<>();
         for (int i = 1; i <= 10000; i++) {
             // 1~9000번은 잔액 50만 원, 9001~10000번은 잔액 0원
@@ -58,21 +58,21 @@ public class DummyDataInitializer implements ApplicationRunner {
 
         // 콘서트별 회차(Schedule) 1개씩 삽입
         String insertSchedulesSql = "INSERT INTO concert_schedule (id, concert_id, concert_date, total_seats, created_at, updated_at) VALUES " +
-                "(1, 1, '2026-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
-                "(2, 2, '2023-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
-                "(3, 3, '2023-12-24 19:00:00.000000', 50, NOW(6), NOW(6)), " +
-                "(4, 4, '2027-01-01 19:00:00.000000', 50, NOW(6), NOW(6))";
+                "(1, 1, '2026-12-24 19:00:00.000000', 500, NOW(6), NOW(6)), " +
+                "(2, 2, '2023-12-24 19:00:00.000000', 500, NOW(6), NOW(6)), " +
+                "(3, 3, '2023-12-24 19:00:00.000000', 500, NOW(6), NOW(6)), " +
+                "(4, 4, '2027-01-01 19:00:00.000000', 500, NOW(6), NOW(6))";
         jdbcTemplate.execute(insertSchedulesSql);
 
-        // 각 회차별 좌석 50개씩 총 150석 삽입 (재귀 CTE를 재사용하여 간결하게 구성)
+        // 각 회차별 좌석 500개씩 총 2000석 삽입
         String insertSeatsSql = "INSERT INTO seat (schedule_id, seat_no, price, status, created_at, updated_at) " +
-                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 50) " +
+                "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte WHERE n < 500) " +
                 "SELECT 1, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
                 "SELECT 2, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
                 "SELECT 3, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte UNION ALL " +
                 "SELECT 4, n, 150000, 'AVAILABLE', NOW(6), NOW(6) FROM cte";
         jdbcTemplate.execute(insertSeatsSql);
 
-        log.info("[Global] Dummy Data Init | Success (Inserted: 10000 Users, 4 Concerts, 4 Schedules, 200 Seats)");
+        log.info("[Global] Dummy Data Init | Success (Inserted: 10000 Users, 4 Concerts, 4 Schedules, 2000 Seats)");
     }
 }
