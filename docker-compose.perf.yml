@@ -1,5 +1,10 @@
 services:
   turnstile-api:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
     ports:
       - "8080:8080"
     ulimits:
@@ -9,17 +14,33 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=perf
 
-  frontend:
-    ports:
-      - "80:80"
-
   mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=1000
+      - --innodb_flush_log_at_trx_commit=2
+      - --sync_binlog=0
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
     ports:
       - "3307:3306"
 
   redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
     ports:
       - "6380:6379"
+
+  frontend:
+    ports:
+      - "80:80"
 
   ngrinder-controller:
     image: ngrinder/controller:3.5.8
@@ -38,6 +59,10 @@ services:
     image: ngrinder/agent:3.5.8
     container_name: turnstile-ngrinder-agent
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
     command: [ "turnstile-ngrinder-controller:80" ]
     depends_on:
       - ngrinder-controller
