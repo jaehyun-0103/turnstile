@@ -35,7 +35,7 @@ server:
 logging:
   level:
     root: info
-    org.hibernate.SQL: info
+    org.hibernate.SQL: warn
     org.springframework.web: info
 
 management:
