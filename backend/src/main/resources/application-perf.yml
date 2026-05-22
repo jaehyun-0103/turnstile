@@ -26,6 +26,8 @@ spring:
 # 4. WAS 쓰레드 최적화
 server:
   tomcat:
+    mbeanregistry:
+      enabled: true
     threads:
       max: 400         # 기본 200에서 2배 증설
     accept-count: 200  # 쓰레드가 꽉 찼을 때 대기열 크기
@@ -42,10 +44,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus, metrics, health # prometheus 엔드포인트 필수
+        include: "prometheus, metrics, health, threaddump"
   metrics:
     tags:
       application: turnstile-api # Grafana 변수 필터링용
     export:
       prometheus:
         enabled: true
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
