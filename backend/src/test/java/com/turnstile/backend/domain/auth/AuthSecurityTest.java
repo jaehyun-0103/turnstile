@@ -8,6 +8,7 @@ import com.turnstile.backend.domain.auth.resolver.LoginUserArgumentResolver;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.GlobalExceptionHandler;
 import com.turnstile.backend.global.exception.TurnstileException;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,10 +66,12 @@ class AuthSecurityTest {
     @Test
     @DisplayName("유효한 IDENTITY 토큰으로 기본 권한 API 요청 시 인터셉터를 통과해야 한다")
     void should_pass_base_api_with_identity_token() throws Exception {
-        // given: 유효한 IDENTITY 토큰 스펙 설정
+        // given: 유효한 IDENTITY 토큰 및 Claims 모킹 설정
         String token = "valid.identity.token";
-        given(jwtProvider.extractUserId(token)).willReturn(1L);
-        given(jwtProvider.extractTokenType(token)).willReturn(TokenType.IDENTITY);
+        Claims claims = mock(Claims.class);
+        given(claims.getSubject()).willReturn("1");
+        given(claims.get("type", String.class)).willReturn(TokenType.IDENTITY.name());
+        given(jwtProvider.parseClaims(token)).willReturn(claims);
 
         // when & then: Level 1 해당 API 호출 시 통과 확인
         mockMvc.perform(get("/api/v1/users/dummy")
@@ -80,10 +83,12 @@ class AuthSecurityTest {
     @Test
     @DisplayName("권한이 낮은 IDENTITY 토큰으로 결제(PAYMENT) API 요청 시 ACCESS_DENIED 예외가 발생해야 한다")
     void should_return_403_when_accessing_payment_with_identity_token() throws Exception {
-        // given: 권한이 낮은 IDENTITY 토큰 스펙 설정
+        // given: 권한이 낮은 IDENTITY 토큰 및 Claims 모킹 설정
         String token = "valid.identity.token";
-        given(jwtProvider.extractUserId(token)).willReturn(1L);
-        given(jwtProvider.extractTokenType(token)).willReturn(TokenType.IDENTITY);
+        Claims claims = mock(Claims.class);
+        given(claims.getSubject()).willReturn("1");
+        given(claims.get("type", String.class)).willReturn(TokenType.IDENTITY.name());
+        given(jwtProvider.parseClaims(token)).willReturn(claims);
 
         // when & then: 권한 부족으로 인한 403 및 A003 코드 확인
         mockMvc.perform(get("/api/v1/payments/dummy")
@@ -109,7 +114,7 @@ class AuthSecurityTest {
         // given: Provider 추출 로직에서 EXPIRED_TOKEN 예외를 던지도록 모킹
         String token = "expired.token";
         willThrow(new TurnstileException(ErrorCode.EXPIRED_TOKEN))
-                .given(jwtProvider).extractUserId(token);
+                .given(jwtProvider).parseClaims(token);
 
         // when & then: 글로벌 핸들러를 거쳐 정확한 에러 코드 확인
         mockMvc.perform(get("/api/v1/users/dummy")

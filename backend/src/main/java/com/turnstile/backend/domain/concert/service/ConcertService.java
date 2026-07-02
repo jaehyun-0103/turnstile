@@ -1,5 +1,7 @@
 package com.turnstile.backend.domain.concert.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.turnstile.backend.domain.concert.dto.ConcertResponse;
 import com.turnstile.backend.domain.concert.dto.ConcertScheduleResponse;
 import com.turnstile.backend.domain.concert.dto.SeatListResponse;
@@ -12,9 +14,11 @@ import com.turnstile.backend.global.exception.TurnstileException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -30,6 +34,8 @@ public class ConcertService {
     private final ConcertRepository concertRepository;
     private final ConcertScheduleRepository concertScheduleRepository;
     private final SeatRepository seatRepository;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     /**
      * 예매 가능한 전체 콘서트 목록을 조회합니다.
@@ -65,18 +71,65 @@ public class ConcertService {
      * @param scheduleId 회차 식별자
      * @return 해당 회차의 좌석 상태 목록
      */
-    // sync=true 옵션으로 다수의 사용자가 동시에 빈 캐시에 접근할 때 발생하는 캐시 스탬피드 현상을 방어함
-    @Cacheable(cacheNames = "concert:schedule", key = "#scheduleId + ':seats'", sync = true)
     public SeatListResponse getSeats(Long scheduleId) {
-        concertScheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new TurnstileException(ErrorCode.SCHEDULE_NOT_FOUND));
+        String cacheKey = "concert:schedule:" + scheduleId + ":seats";
+        String lockKey = "lock:concert:schedule:" + scheduleId;
 
-        log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_seats, scheduleId: {})", scheduleId);
+        // 1단계: Redis 캐시 레이어 선조회 수행
+        String cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+            try {
+                return objectMapper.readValue(cachedData, SeatListResponse.class);
+            } catch (JsonProcessingException e) {
+                log.error("[Concert] Cache Deserialization Fail | (message: {})", e.getMessage());
+            }
+        }
 
-        List<SeatResponse> seats = seatRepository.findAllBySchedule_Id(scheduleId).stream()
-                .map(SeatResponse::from)
-                .toList();
+        // 2단계: 캐시 미스 발생 시 분산 락(Try-Lock) 획득 시도를 통해 DB 쏠림 방어선 구축 (SETNX 제어)
+        Boolean isLocked = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", Duration.ofSeconds(3));
 
-        return new SeatListResponse(scheduleId, seats);
+        if (Boolean.TRUE.equals(isLocked)) {
+            try {
+                // 대표 권한 스레드가 진입하여 단건 검증 및 DB 조회 인입
+                concertScheduleRepository.findById(scheduleId)
+                        .orElseThrow(() -> new TurnstileException(ErrorCode.SCHEDULE_NOT_FOUND));
+
+                log.info("[Concert] DB Query (Cache Miss) | Success (action: retrieve_seats, scheduleId: {})", scheduleId);
+
+                List<SeatResponse> seats = seatRepository.findAllBySchedule_Id(scheduleId).stream()
+                        .map(SeatResponse::from)
+                        .toList();
+
+                SeatListResponse response = new SeatListResponse(scheduleId, seats);
+
+                // 조회 데이터 즉시 직렬화 수행 후 Redis 캐싱 적재 (만료 정책: 1분 설정)
+                String jsonValue = objectMapper.writeValueAsString(response);
+                redisTemplate.opsForValue().set(cacheKey, jsonValue, Duration.ofMinutes(1));
+
+                return response;
+            } catch (JsonProcessingException e) {
+                log.error("[Concert] Cache Serialization Fail | (message: {})", e.getMessage());
+                throw new TurnstileException(ErrorCode.INTERNAL_SERVER_ERROR, "캐시 동기화 연산에 실패했습니다.");
+            } finally {
+                // 비즈니스 트랜잭션 종료 직후 원자적 락 회수 방어선 실행
+                redisTemplate.delete(lockKey);
+            }
+        } else {
+            // 후속 조회 스레드 정체 시 50ms 대기 후 대표자가 할당한 캐시 인프라 재참조
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+
+            String reCachedData = redisTemplate.opsForValue().get(cacheKey);
+            if (reCachedData != null) {
+                try {
+                    return objectMapper.readValue(reCachedData, SeatListResponse.class);
+                } catch (JsonProcessingException ignored) {}
+            }
+            // 경합 임계점 도달 시 안전하게 429 Too Many Requests 비즈니스 예외로 처리
+            throw new TurnstileException(ErrorCode.TOO_MANY_REQUESTS, "조회 요청이 집중되었습니다. 잠시 후 다시 시도해주세요.");
+        }
     }
 }

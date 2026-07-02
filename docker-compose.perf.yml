@@ -3,7 +3,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
+          cpus: '5.0' # '2.0'
           memory: 2G
     ports:
       - "8080:8080"
@@ -21,10 +21,12 @@ services:
       - --max-connections=1000
       - --innodb_flush_log_at_trx_commit=2
       - --sync_binlog=0
+      - --innodb_lock_wait_timeout=3 # 신규
+      - --innodb_buffer_pool_size=512M # 신규
     deploy:
       resources:
         limits:
-          cpus: '1.5'
+          cpus: '3' # '1.5'
           memory: 1G
     ports:
       - "3307:3306"
@@ -33,7 +35,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: '1.5' # '1.0'
           memory: 512M
     ports:
       - "6380:6379"
@@ -62,7 +64,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
+          cpus: '2.5' # '1.5'
     command: [ "turnstile-ngrinder-controller:80" ]
     depends_on:
       - ngrinder-controller

@@ -22,8 +22,8 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
             "SET s.status = 'HOLD', s.holdUserId = :userId, s.holdExpiresAt = :expiresAt " +
             "WHERE s.id IN :seatIds AND s.status = 'AVAILABLE'")
     int holdSeatsConditionally(@Param("seatIds") List<Long> seatIds,
-                              @Param("userId") Long userId,
-                              @Param("expiresAt") LocalDateTime expiresAt);
+                               @Param("userId") Long userId,
+                               @Param("expiresAt") LocalDateTime expiresAt);
 
     // TTL이 만료된 임시 점유 좌석들을 스케줄러를 통해 일괄적으로 예매 가능 상태로 회수함
     @Modifying(clearAutomatically = true)
@@ -38,9 +38,8 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
 
     // 결제 완료 이벤트 발생 시 예약 그룹에 속한 좌석들을 최종 판매 완료(SOLD) 상태로 확정함
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Seat s SET s.status = 'SOLD' " +
-            "WHERE s.id IN (SELECT r.seat.id FROM Reservation r WHERE r.groupId = :groupId)")
-    void confirmSeats(@Param("groupId") String groupId);
+    @Query("UPDATE Seat s SET s.status = 'SOLD' WHERE s.id IN :seatIds AND s.status = 'HOLD'")
+    void confirmSeats(@Param("seatIds") List<Long> seatIds);
 
     // 예약 검증 로직에서 연관된 스케줄 및 콘서트 정보를 단일 쿼리(Fetch Join)로 적재함
     @Query("SELECT s FROM Seat s " +

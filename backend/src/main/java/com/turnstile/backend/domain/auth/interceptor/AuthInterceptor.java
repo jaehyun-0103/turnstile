@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -45,8 +46,22 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw new TurnstileException(ErrorCode.INVALID_TOKEN);
         }
 
-        Long userId = jwtProvider.extractUserId(token);
-        TokenType tokenType = jwtProvider.extractTokenType(token);
+        Claims claims = jwtProvider.parseClaims(token);
+
+        Long userId = Long.valueOf(claims.getSubject());
+
+        String typeStr = claims.get("type", String.class);
+        if (typeStr == null) {
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
+
+        TokenType tokenType;
+        try {
+            tokenType = TokenType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            throw new TurnstileException(ErrorCode.INVALID_TOKEN);
+        }
+
         String uri = request.getRequestURI();
 
         // 엔드포인트(URI) 성격에 따른 3-Tier 인가 정책 적용 (Fail-Fast)
