@@ -19,13 +19,19 @@ public class UserService {
     private final UserRepository userRepository;
 
     /**
-     * 사용자의 잔액을 차감합니다. 잔액이 부족할 경우 예외를 발생시킵니다.
+     * 사용자의 잔액을 차감합니다.
+     * 잔액이 부족할 경우 예외를 발생시킵니다.
      * @param userId 사용자 식별자
      * @param amount 차감할 금액
      * @return 차감 후 최신 잔액
      */
     @Transactional
     public Long deductBalance(Long userId, Long amount) {
+        // 차감 전 현재 영속성 컨텍스트에 확보되어 있는 유저의 기존 잔액을 먼저 로컬 변수로 안전하게 확보
+        Long currentBalance = userRepository.findById(userId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND))
+                .getBalance();
+
         int updatedCount = userRepository.deductBalance(userId, amount);
         if (updatedCount == 0) {
             throw new TurnstileException(ErrorCode.INSUFFICIENT_BALANCE);
@@ -33,9 +39,8 @@ public class UserService {
 
         log.info("[User] Deduct Balance | Success (userId: {}, amount: {})", userId, amount);
 
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND))
-                .getBalance();
+        // 영속성 컨텍스트 초기화로 인한 불필요한 DB 재조회를 완전 제거하고, 메모리 확보 값으로 즉시 연산 반환
+        return currentBalance - amount;
     }
 
     /**
