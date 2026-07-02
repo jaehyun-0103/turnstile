@@ -79,9 +79,16 @@ public class PaymentService {
             throw new TurnstileException(ErrorCode.ALREADY_PAID, "요청 그룹 ID: " + request.groupId());
         }
 
-        // 유저 잔액 차감 및 좌석 상태 확정 (HOLD -> SOLD)
+        // 유저 잔액 차감 처리 수행
         Long remainingBalance = userService.deductBalance(userId, totalAmount);
-        seatRepository.confirmSeats(request.groupId());
+
+        // reservations 객체 스코프에서 순수 좌석 식별자(Long) 목록만 컴파일 구조에 맞춰 온전하게 정제 및 변환
+        List<Long> seatIds = reservations.stream()
+                .map(r -> r.getSeat().getId())
+                .toList();
+
+        // 인덱스를 직접 타격하는 고성능 벌크 업데이트 메서드 호출
+        seatRepository.confirmSeats(seatIds);
 
         // 결제 이력 생성 및 영속화
         Payment payment = paymentRepository.save(Payment.builder()
@@ -94,7 +101,7 @@ public class PaymentService {
         Long scheduleId = reservations.getFirst().getSeat().getSchedule().getId();
         // 트랜잭션 롤백 시 DB와 Redis 간의 생명주기 불일치(Race Condition)를 차단하기 위해 이벤트 발행으로 결합도 완화
         eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
-        // 결제 확정 즉시 활성열에서 유저를 퇴출하기 위한 이벤트 발행 (좀비 슬롯 방어)
+        // 결제 확정 즉시 활성열에서 유저를 퇴출하기 위한 이벤트 발행 (대기열 자원 점유 회수)
         eventPublisher.publishEvent(new UserTicketingCompletedEvent(request.concertId(), userId));
 
         log.info("[Payment] Process Payment | Success (userId: {}, paymentId: {}, amount: {})", userId, payment.getId(), totalAmount);
