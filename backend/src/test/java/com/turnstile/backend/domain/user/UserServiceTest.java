@@ -1,5 +1,6 @@
 package com.turnstile.backend.domain.user;
 
+import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.exception.ErrorCode;
@@ -43,9 +44,11 @@ class UserServiceTest {
     @Test
     @DisplayName("보유 잔액보다 많은 금액을 차감 시도할 경우 INSUFFICIENT_BALANCE 예외가 발생해야 한다")
     void should_throw_exception_when_balance_is_insufficient() {
-        // given: 차감 쿼리가 0건을 업데이트(실패)하도록 모킹
+        // given: 유저 정보 확보 및 차감 쿼리가 0건을 업데이트(실패)하도록 모킹
         Long userId = 1L;
         Long deductAmount = 10000L;
+        User user = User.builder().id(userId).balance(5000L).build();
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.deductBalance(userId, deductAmount)).willReturn(0);
 
         // when & then: 잔액 부족 예외 발생 검증

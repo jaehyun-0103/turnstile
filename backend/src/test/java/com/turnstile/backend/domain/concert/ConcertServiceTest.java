@@ -11,11 +11,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -26,6 +32,8 @@ class ConcertServiceTest {
 
     @Mock private ConcertRepository concertRepository;
     @Mock private ConcertScheduleRepository concertScheduleRepository;
+    @Mock private RedisTemplate<String, String> redisTemplate;
+    @Mock private ValueOperations<String, String> valueOperations;
 
     @InjectMocks private ConcertService concertService;
 
@@ -45,8 +53,14 @@ class ConcertServiceTest {
     @Test
     @DisplayName("존재하지 않는 회차의 좌석 조회 시 SCHEDULE_NOT_FOUND 예외가 발생해야 한다")
     void should_throw_exception_when_schedule_not_found() {
-        // given: 존재하지 않는 회차 식별자 세팅
+        // given: 존재하지 않는 회차 식별자 및 Redis 분산락 획득 세팅
         Long invalidScheduleId = 999L;
+        String cacheKey = "concert:schedule:" + invalidScheduleId + ":seats";
+        String lockKey = "lock:concert:schedule:" + invalidScheduleId;
+
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.get(cacheKey)).willReturn(null);
+        given(valueOperations.setIfAbsent(eq(lockKey), eq("locked"), any(Duration.class))).willReturn(true);
         given(concertScheduleRepository.findById(invalidScheduleId)).willReturn(Optional.empty());
 
         // when & then: 조회 시 예외 발생 확인
