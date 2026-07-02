@@ -26,4 +26,4 @@ WORKDIR /app
 COPY --from=builder /app/build/libs/*SNAPSHOT.jar app.jar
 
 # 시간대 설정 및 애플리케이션 실행
-ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

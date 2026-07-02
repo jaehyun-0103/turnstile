@@ -6,9 +6,9 @@ spring:
   # 1. DB 커넥션 풀 증설
   datasource:
     hikari:
-      maximum-pool-size: 40  # batch-size(100)를 감당하기 위해 기존 10에서 증설
-      minimum-idle: 20
-      connection-timeout: 5000
+      maximum-pool-size: 80  # 40 -> 80
+      minimum-idle: 40 # 20 -> 40
+      connection-timeout: 3000 # 5000 -> 3000
 
   # 2. JPA 로그 비활성화
   jpa:
@@ -21,7 +21,12 @@ spring:
   # 3. Redis 타임아웃 조정
   data:
     redis:
-      timeout: 5000
+      timeout: 250 # 5000 -> 250
+      lettuce:
+        pool:
+          max-active: 80 # 신규
+          max-idle: 80 # 신규
+          min-idle: 10 # 신규
 
 # 4. WAS 쓰레드 최적화
 server:
@@ -29,9 +34,11 @@ server:
     mbeanregistry:
       enabled: true
     threads:
-      max: 400         # 기본 200에서 2배 증설
-    accept-count: 200  # 쓰레드가 꽉 찼을 때 대기열 크기
-    max-connections: 8192 # 동시에 유지할 수 있는 커넥션 수 상향
+      max: 200 # 400 -> 200
+    accept-count: 500 # 200 -> 500
+    max-connections: 4096 # 200 -> 4096
+    keep-alive-timeout: 60000 # 신규
+    max-keep-alive-requests: 2000 # 신규
 
 # 로깅 레벨 조정
 logging:
@@ -47,7 +54,7 @@ management:
         include: "prometheus, metrics, health, threaddump"
   metrics:
     tags:
-      application: turnstile-api # Grafana 변수 필터링용
+      application: turnstile-api
     export:
       prometheus:
         enabled: true
