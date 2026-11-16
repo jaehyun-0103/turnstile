@@ -18,7 +18,7 @@ const RootLayout = () => {
       <GNB />
 
       {/* 메인 콘텐츠 라우팅 영역 */}
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
     </div>

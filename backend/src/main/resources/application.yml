@@ -55,7 +55,7 @@ management:
       hikaricp: true
 
 jwt:
-  secret: "turnstile-ticketing-system-secret-key"
+  secret: ${JWT_SECRET}
 
 # 대기열 정책 설정
 queue:

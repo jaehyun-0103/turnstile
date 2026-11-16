@@ -48,7 +48,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex flex-1 items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
         <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">Turnstile</h1>
         <p className="text-center text-gray-500 mb-8">대규모 트래픽 제어 예매 시스템</p>

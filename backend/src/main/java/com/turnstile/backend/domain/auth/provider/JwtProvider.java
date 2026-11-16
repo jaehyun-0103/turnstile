@@ -14,7 +14,11 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.HexFormat;
+import java.util.Set;
 
 /**
  * JWT 토큰의 생성, 서명 검증 및 파싱을 담당하는 유틸리티 클래스입니다.
@@ -23,10 +27,52 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
+    private static final int MIN_SECRET_BYTES = 32; // 최소 비밀키 길이(32바이트)
+
+    // 기존 공개 기본키 및 큰따옴표가 포함된 기존 폴백 값의 SHA-256 지문 (사용 차단 식별용)
+    private static final Set<String> REJECTED_SECRET_FINGERPRINTS = Set.of(
+            "0c44a3ac2062998acec60215c55fa1a9bbdf885484900366e461e7a3dcfb3f8f",
+            "92a57fed863e863e59389dd9868a7c5804453e842b9c697b0ba1ffd085319ce4"
+    );
+
     private final SecretKey key;
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT secret must be configured.");
+        }
+
+        if (secret.codePoints().anyMatch(
+                codePoint -> Character.isWhitespace(codePoint)
+                        || Character.isSpaceChar(codePoint))) {
+            throw new IllegalStateException("JWT secret must not contain whitespace.");
+        }
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+
+        if (secretBytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "JWT secret must contain at least 32 UTF-8 bytes.");
+        }
+
+        if (REJECTED_SECRET_FINGERPRINTS.contains(fingerprint(secretBytes))) {
+            throw new IllegalStateException(
+                    "The previously published JWT secret must not be reused.");
+        }
+
+        this.key = Keys.hmacShaKeyFor(secretBytes);
+    }
+
+    /**
+     * 비밀키 바이트 배열의 SHA-256 해시 지문을 계산합니다.
+    */
+    private static String fingerprint(byte[] secretBytes) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(secretBytes);
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable.");
+        }
     }
 
     /**

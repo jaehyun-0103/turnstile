@@ -3,6 +3,7 @@ services:
     image: ${DOCKER_USERNAME}/turnstile-api:latest
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
 
   frontend:
     image: ${DOCKER_USERNAME}/turnstile-frontend:latest
