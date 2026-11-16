@@ -6,6 +6,8 @@ import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -114,5 +116,91 @@ class JwtProviderUnitTest {
         TurnstileException exception = assertThrows(TurnstileException.class,
                 () -> jwtProvider.extractTokenType(tokenWithUnknownType));
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("누락되거나 부적절한 JWT 키는 생성 시 거부한다")
+    void rejectMissingOrInvalidSecrets() {
+        // when & then: null, 빈 값, 길이 미달 및 공백 포함 비밀키로 생성 시 예외 발생 확인
+        assertThrows(IllegalStateException.class, () -> new JwtProvider(null));
+        assertThrows(IllegalStateException.class, () -> new JwtProvider(""));
+        assertThrows(IllegalStateException.class, () -> new JwtProvider(" ".repeat(40)));
+        assertThrows(IllegalStateException.class, () -> new JwtProvider("a".repeat(31)));
+
+        assertThrows(IllegalStateException.class,
+                () -> new JwtProvider("a".repeat(32) + " "));
+        assertThrows(IllegalStateException.class,
+                () -> new JwtProvider("a".repeat(16) + "\t" + "b".repeat(16)));
+        assertThrows(IllegalStateException.class,
+                () -> new JwtProvider("a".repeat(16) + "\u00A0" + "b".repeat(16)));
+    }
+
+    @Test
+    @DisplayName("다른 서명키로 발급한 토큰은 INVALID_TOKEN으로 거부한다")
+    void rejectTokenSignedWithDifferentKey() {
+        // given: 다른 비밀키를 사용하는 JwtProvider로 토큰 생성
+        JwtProvider otherProvider =
+                new JwtProvider("different-test-key-for-signature-check-2026");
+
+        String token = otherProvider.generateToken(1L, TokenType.IDENTITY);
+
+        // when & then: 기존 프로바이더로 검증 시 유효하지 않음 예외 발생 및 에러 코드 확인
+        TurnstileException exception = assertThrows(
+                TurnstileException.class,
+                () -> jwtProvider.validateToken(token));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("서명 이후 payload가 변경된 토큰은 거부한다")
+    void rejectTamperedPayload() {
+        // given: 정상 발급된 토큰의 payload 부분을 임의로 변조함
+        String token = jwtProvider.generateToken(1L, TokenType.IDENTITY);
+        String[] parts = token.split("\\.");
+
+        String changedPayload = java.util.Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(
+                        "{\"sub\":\"999\",\"type\":\"PAYMENT\"}"
+                                .getBytes(StandardCharsets.UTF_8));
+
+        String tamperedToken =
+                parts[0] + "." + changedPayload + "." + parts[2];
+
+        // when & then: 변조된 토큰 검증 시 예외 발생 및 에러 코드 확인
+        TurnstileException exception = assertThrows(
+                TurnstileException.class,
+                () -> jwtProvider.validateToken(tamperedToken));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("jwt.secret 설정이 없으면 Spring 컨텍스트 초기화에 실패한다")
+    void failContextWhenSecretIsMissing() {
+        // when & then: jwt.secret 프로퍼티 없이 컨텍스트 실행 시 초기화 실패 확인
+        new ApplicationContextRunner()
+                .withBean(
+                        PropertySourcesPlaceholderConfigurer.class,
+                        PropertySourcesPlaceholderConfigurer::new)
+                .withUserConfiguration(JwtProvider.class)
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    @DisplayName("정상 JWT 키 설정이면 Spring 컨텍스트 초기화에 성공한다")
+    void startContextWhenSecretIsConfigured() {
+        // when & then: 유효한 jwt.secret 프로퍼티 설정 시 빈 등록 및 컨텍스트 초기화 성공 확인
+        new ApplicationContextRunner()
+                .withBean(
+                        PropertySourcesPlaceholderConfigurer.class,
+                        PropertySourcesPlaceholderConfigurer::new)
+                .withUserConfiguration(JwtProvider.class)
+                .withPropertyValues("jwt.secret=" + secretKey)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(JwtProvider.class);
+                });
     }
 }
