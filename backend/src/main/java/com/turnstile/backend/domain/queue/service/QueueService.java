@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -88,7 +89,9 @@ public class QueueService {
 
         // 진입 완료 상태 확인
         if (expireTimestamp != null) {
-            Date expiryDate = new Date(expireTimestamp.longValue() * 1000);
+            Date expiryDate = Date.from(
+                    Instant.ofEpochSecond(expireTimestamp.longValue())
+            );
             String accessToken = jwtProvider.generateToken(userId, TokenType.QUEUE, expiryDate);
 
             log.info("[Queue] Get Status | Token Issued - Active (userId: {}, concertId: {})", userId, concertId);

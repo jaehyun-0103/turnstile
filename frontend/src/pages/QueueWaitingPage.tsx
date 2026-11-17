@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 export const QueueWaitingPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setQueueToken } = useAuthStore();
+  const { setQueueToken, clearCheckoutTokens } = useAuthStore();
 
   const state = location.state as { concertId?: number; scheduleId?: number } | null;
   const concertId = state?.concertId;
@@ -39,6 +39,21 @@ export const QueueWaitingPage = () => {
       try {
         const statusRes = await getQueueStatus(concertId);
         if (!isMounted) return;
+
+        if (statusRes.status === "INVALID") {
+          if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+
+          clearCheckoutTokens();
+          toast.error(
+            "대기열 이용 시간이 만료되었거나 대기 정보가 없습니다. 다시 진입해주세요.",
+            { id: "queue-invalid" },
+          );
+          navigate("/", { replace: true });
+          return;
+        }
 
         setRank(statusRes.rank);
 
@@ -106,7 +121,7 @@ export const QueueWaitingPage = () => {
       isMounted = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [concertId, scheduleId, navigate, setQueueToken]);
+  }, [concertId, scheduleId, navigate, setQueueToken, clearCheckoutTokens]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">

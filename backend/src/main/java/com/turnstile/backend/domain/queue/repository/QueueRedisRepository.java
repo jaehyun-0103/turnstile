@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 
@@ -18,6 +19,7 @@ public class QueueRedisRepository {
     private final RedisTemplate<String, String> redisTemplate;
     private final RedisScript<Long> enterQueueScript;
     private final RedisScript<List<String>> transitionQueueScript;
+    private final Clock clock;
 
     private static final String ACTIVE_CONCERTS_KEY = "queue:scheduler:active_concerts";
 
@@ -34,26 +36,53 @@ public class QueueRedisRepository {
                 enterQueueScript,
                 List.of(activeKey, waitingKey, counterKey, ACTIVE_CONCERTS_KEY),
                 userIdStr,
-                concertIdStr
+                concertIdStr,
+                String.valueOf(clock.instant().getEpochSecond())
         );
     }
 
     /**
-     * 허용된 정원과 초당 유입 제한량(Batch Size)에 맞춰 대기 중인 유저를 활성(입장) 상태로 전이합니다.
+     * 현재 기준 시계(Clock)의 시각을 기준으로 대기 중인 유저를 활성(입장) 상태로 전이합니다.
+     * @return 활성 상태로 전이된 사용자 ID 목록
+     */
+    public List<String> transitionQueue(
+            String concertIdStr,
+            long maxCapacity,
+            long batchSize,
+            long expireScore
+    ) {
+        return transitionQueue(
+                concertIdStr,
+                maxCapacity,
+                batchSize,
+                expireScore,
+                clock.instant().getEpochSecond()
+        );
+    }
+
+    /**
+     * 허용된 정원과 초당 유입 제한량(Batch Size)에 맞춰 만료된 활성 유저를 정리하고 대기 중인 유저를 활성(입장) 상태로 전이합니다.
      * 빈 콘서트일 경우 Lua 스크립트 내부에서 자동으로 스케줄러 순회 대상에서 제외(Self-Cleanup)합니다.
      * @return 활성 상태로 전이된 사용자 ID 목록
      */
-    public List<String> transitionQueue(String concertIdStr, long maxCapacity, long batchSize, long expireScore) {
+    public List<String> transitionQueue(
+            String concertIdStr,
+            long maxCapacity,
+            long batchSize,
+            long expireScore,
+            long nowEpochSeconds
+    ) {
         String waitingKey = "queue:concert:" + concertIdStr + ":waiting";
         String activeKey = "queue:concert:" + concertIdStr + ":active";
 
         return redisTemplate.execute(
                 transitionQueueScript,
-                List.of(waitingKey, activeKey, "queue:scheduler:active_concerts"),
+                List.of(waitingKey, activeKey, ACTIVE_CONCERTS_KEY),
                 String.valueOf(maxCapacity),
                 String.valueOf(expireScore),
                 String.valueOf(batchSize),
-                concertIdStr
+                concertIdStr,
+                String.valueOf(nowEpochSeconds)
         );
     }
 
@@ -66,11 +95,10 @@ public class QueueRedisRepository {
     }
 
     /**
-     * 특정 사용자가 현재 활성(입장 완료) 상태인지 확인합니다.
+     * 특정 사용자가 현재 만료되지 않은 유효한 활성(입장 완료) 상태인지 확인합니다.
      */
     public boolean isActiveUser(String concertIdStr, String userIdStr) {
-        String activeKey = "queue:concert:" + concertIdStr + ":active";
-        return redisTemplate.opsForZSet().score(activeKey, userIdStr) != null;
+        return getActiveUserScore(concertIdStr, userIdStr) != null;
     }
 
     /**
@@ -100,11 +128,15 @@ public class QueueRedisRepository {
     }
 
     /**
-     * 활성 상태 사용자의 만료 시간(Score)을 조회합니다.
+     * 현재 유효한 활성(ACTIVE) 상태 사용자의 만료 시각(Score)을 조회합니다.
+     * 존재하지 않거나 만료 시각이 경과한 경우 null을 반환하며, 키 멤버를 직접 삭제하지는 않습니다.
      */
     public Double getActiveUserScore(String concertIdStr, String userIdStr) {
         String activeKey = "queue:concert:" + concertIdStr + ":active";
-        return redisTemplate.opsForZSet().score(activeKey, userIdStr);
+        Double score = redisTemplate.opsForZSet().score(activeKey, userIdStr);
+        long now = clock.instant().getEpochSecond();
+
+        return score != null && score > now ? score : null;
     }
 
     /**

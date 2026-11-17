@@ -9,7 +9,7 @@ export interface QueueEntryResponse {
 export interface QueueStatusResponse {
   concertId: number;
   rank: number;
-  status: "WAITING" | "ACTIVE";
+  status: "WAITING" | "ACTIVE" | "INVALID";
   accessToken: string | null;
 }
 
