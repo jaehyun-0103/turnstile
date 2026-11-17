@@ -1,9 +1,10 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   # 도커 이미지 빌드 및 Docker Hub 푸시
@@ -56,25 +57,36 @@ jobs:
             cd /home/ubuntu/turnstile
             git pull --ff-only origin main
 
-            if ! sudo test -r /home/ubuntu/turnstile/.env.prod; then
+            if ! sudo test -r /home/ubuntu/turnstile/.env; then
               echo "Deployment environment file is missing or unreadable."
               exit 1
             fi
 
-            sudo docker-compose \
-              --env-file /home/ubuntu/turnstile/.env.prod \
+            sudo docker compose version
+
+            sudo docker compose \
+              --project-name turnstile \
+              --env-file /home/ubuntu/turnstile/.env \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               config --quiet
 
-            sudo docker-compose \
-              --env-file /home/ubuntu/turnstile/.env.prod \
+            sudo docker compose \
+              --project-name turnstile \
+              --env-file /home/ubuntu/turnstile/.env \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               pull turnstile-api frontend
 
-            sudo docker-compose \
-              --env-file /home/ubuntu/turnstile/.env.prod \
+            sudo docker compose \
+              --project-name turnstile \
+              --env-file /home/ubuntu/turnstile/.env \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              up -d --no-build
+              up -d --no-build --wait --wait-timeout 180
+
+            echo "Deployment health checks passed."
+            echo "API image ID:"
+            sudo docker inspect --format '{{.Image}}' turnstile-api
+            echo "Frontend image ID:"
+            sudo docker inspect --format '{{.Image}}' turnstile-frontend
