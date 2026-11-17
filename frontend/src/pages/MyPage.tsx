@@ -67,7 +67,7 @@ export const MyPage = () => {
 
     try {
       setIsLoading(true);
-      const res = await chargeBalance(userInfo.userId, Number(chargeAmount));
+            const res = await chargeBalance(Number(chargeAmount));
 
       updateBalance(res.balance); // 스토어 잔액 업데이트
       toast.success(`${chargeAmount.toLocaleString()}원이 충전되었습니다.`);
