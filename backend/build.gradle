@@ -24,8 +24,10 @@ repositories {
     mavenCentral()
 }
 
-test {
-    jvmArgs += "-XX:+EnableDynamicAgentLoading"
+dependencyManagement {
+    imports {
+        mavenBom 'org.testcontainers:testcontainers-bom:2.0.5'
+    }
 }
 
 dependencies {
@@ -37,6 +39,8 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-mysql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
@@ -47,6 +51,32 @@ dependencies {
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 }
 
-tasks.named('test') {
+tasks.named('test', Test) {
     useJUnitPlatform()
+
+    jvmArgs += "-XX:+EnableDynamicAgentLoading"
+
+    systemProperty 'spring.profiles.active', 'test'
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+
+    maxParallelForks = 1
+
+    // 격리 및 회귀 검증이 완료된 테스트만 기본 실행 대상으로 관리함.
+    // 기존 로컬 데이터 의존 테스트는 전환 전까지 포함하지 않음.
+    include '**/JwtProviderUnitTest.class'
+    include '**/CacheEvictorUnitTest.class'
+    include '**/ConcertServiceTest.class'
+    include '**/ConcertCacheIntegrationTest.class'
+    include '**/ReservationServiceTest.class'
+    include '**/ReservationPaymentConsistencyTest.class'
+    include '**/PaymentServiceTest.class'
+    include '**/PaymentControllerTest.class'
+    include '**/UserControllerTest.class'
+    include '**/UserServiceTest.class'
+    include '**/UserBalanceConsistencyTest.class'
+
+    testLogging {
+        events 'failed', 'skipped'
+        exceptionFormat 'full'
+    }
 }
