@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 
@@ -29,6 +29,7 @@ public class QueueScheduler {
     private long expirationTime;
 
     private final MeterRegistry meterRegistry;
+    private final Clock clock;
 
     /**
      * 주기적으로 대기열을 순회하며 빈자리가 있을 경우 대기자를 활성 상태로 전이시킵니다.
@@ -40,14 +41,19 @@ public class QueueScheduler {
             return;
         }
 
-        long now = Instant.now().getEpochSecond();
+        long now = clock.instant().getEpochSecond();
         long expireScore = now + expirationTime;
 
         for (String concertIdStr : activeConcerts) {
             long maxCapacity = queueRedisRepository.getMaxActiveConfig(concertIdStr);
 
             List<String> enteredUsers = queueRedisRepository.transitionQueue(
-                    concertIdStr, maxCapacity, admissionBatchSize, expireScore);
+                    concertIdStr,
+                    maxCapacity,
+                    admissionBatchSize,
+                    expireScore,
+                    now
+            );
 
             if (enteredUsers != null && !enteredUsers.isEmpty()) {
                 log.info("[Queue] Scheduler Transition | Success (concertId: {}, enteredCount: {})", concertIdStr, enteredUsers.size());
@@ -69,7 +75,7 @@ public class QueueScheduler {
             return;
         }
 
-        long now = Instant.now().getEpochSecond();
+        long now = clock.instant().getEpochSecond();
 
         for (String concertIdStr : activeConcerts) {
             // 10초마다 만료된 진입 완료 유저 데이터 일괄 삭제

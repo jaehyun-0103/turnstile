@@ -67,6 +67,7 @@ tasks.named('test', Test) {
     include '**/CacheEvictorUnitTest.class'
     include '**/GlobalExceptionHandlerTest.class'
     include '**/ClientInputValidationTest.class'
+    include '**/QueueExpiryIntegrationTest.class'
     include '**/ConcertServiceTest.class'
     include '**/ConcertScheduleTimeTest.class'
     include '**/ConcertCacheIntegrationTest.class'

@@ -5,6 +5,7 @@
 -- ARGV[2]: 만료 시간 (Unix Timestamp)
 -- ARGV[3]: 초당 유입 제한량 (Batch Size / N)
 -- ARGV[4]: 콘서트 ID
+-- ARGV[5]: 현재 기준 시각 (Unix Timestamp)
 -- Score: 만료시간
 
 local waitingKey = KEYS[1]
@@ -14,6 +15,10 @@ local maxCapacity = tonumber(ARGV[1])
 local expireScore = tonumber(ARGV[2])
 local batchSize = tonumber(ARGV[3])
 local concertId = ARGV[4]
+local now = tonumber(ARGV[5])
+
+-- 정원 계산 전 만료 시각(Score)이 지난 활성 유저 일괄 제거
+redis.call('ZREMRANGEBYSCORE', activeKey, '-inf', now)
 
 -- ZCARD로 현재 활성 유저 확인
 local currentActiveCount = redis.call('ZCARD', activeKey)
@@ -29,13 +34,11 @@ if availableSlots > 0 then
         local poppedElements = redis.call('ZPOPMIN', waitingKey, admissionCount)
 
         -- ZPOPMIN의 반환값은 [member1, score1, member2, score2...] 형태의 배열
-        if #poppedElements > 0 then
-            -- 2개씩 건너뛰며 userId만 추출하여 ZADD 수행
-            for i = 1, #poppedElements, 2 do
-                local userId = poppedElements[i]
-                redis.call('ZADD', activeKey, expireScore, userId)
-                table.insert(enteredUsers, userId)
-            end
+        -- 2개씩 건너뛰며 userId만 추출하여 ZADD 수행
+        for i = 1, #poppedElements, 2 do
+            local userId = poppedElements[i]
+            redis.call('ZADD', activeKey, expireScore, userId)
+            table.insert(enteredUsers, userId)
         end
     end
 end
