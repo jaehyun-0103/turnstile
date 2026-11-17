@@ -65,6 +65,8 @@ tasks.named('test', Test) {
     // 기존 로컬 데이터 의존 테스트는 전환 전까지 포함하지 않음.
     include '**/JwtProviderUnitTest.class'
     include '**/CacheEvictorUnitTest.class'
+    include '**/GlobalExceptionHandlerTest.class'
+    include '**/ClientInputValidationTest.class'
     include '**/ConcertServiceTest.class'
     include '**/ConcertScheduleTimeTest.class'
     include '**/ConcertCacheIntegrationTest.class'
