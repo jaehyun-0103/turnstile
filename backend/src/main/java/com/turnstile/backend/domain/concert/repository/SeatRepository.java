@@ -36,10 +36,18 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Query("SELECT DISTINCT s.schedule.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now")
     List<Long> findScheduleIdsByExpiredSeats(@Param("now") LocalDateTime now);
 
-    // 결제 완료 이벤트 발생 시 예약 그룹에 속한 좌석들을 최종 판매 완료(SOLD) 상태로 확정함
+    // 결제 완료 시 점유 소유자 및 만료 시간 유효성을 검증하여 좌석들을 최종 판매 완료(SOLD) 상태로 확정함
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Seat s SET s.status = 'SOLD' WHERE s.id IN :seatIds AND s.status = 'HOLD'")
-    void confirmSeats(@Param("seatIds") List<Long> seatIds);
+    @Query("UPDATE Seat s SET s.status = 'SOLD' " +
+            "WHERE s.id IN :seatIds " +
+            "AND s.status = 'HOLD' " +
+            "AND s.holdUserId = :userId " +
+            "AND s.holdExpiresAt > :now")
+    int confirmSeats(
+            @Param("seatIds") List<Long> seatIds,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now
+    );
 
     // 예약 검증 로직에서 연관된 스케줄 및 콘서트 정보를 단일 쿼리(Fetch Join)로 적재함
     @Query("SELECT s FROM Seat s " +

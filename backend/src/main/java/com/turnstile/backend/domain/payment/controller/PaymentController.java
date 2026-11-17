@@ -4,16 +4,15 @@ import com.turnstile.backend.domain.auth.annotation.LoginUser;
 import com.turnstile.backend.domain.payment.dto.PaymentRequest;
 import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.service.PaymentService;
+import com.turnstile.backend.global.exception.ErrorCode;
+import com.turnstile.backend.global.exception.TurnstileException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 좌석 예약을 최종 결제 처리하기 위한 엔드포인트를 제공하는 컨트롤러입니다.
@@ -34,7 +33,18 @@ public class PaymentController {
     @PostMapping
     public ResponseEntity<PaymentResponse> processPayment(
             @LoginUser Long loginUserId,
+            @RequestAttribute("paymentGroupId") String paymentGroupId,
             @Valid @RequestBody PaymentRequest request) {
+        // 결제 토큰에 바인딩된 예약 그룹과 요청 본문의 예약 그룹 일치 여부 검증
+        if (!paymentGroupId.equals(request.groupId())) {
+            log.warn("[Payment] API Request | Process Payment Denied - GroupId mismatch (userId: {}, tokenGroupId: {}, requestGroupId: {})",
+                    loginUserId, paymentGroupId, request.groupId());
+            throw new TurnstileException(
+                    ErrorCode.ACCESS_DENIED,
+                    "결제 토큰의 예약 그룹이 일치하지 않습니다."
+            );
+        }
+
         log.info("[Payment] API Request | Process Payment (userId: {}, groupId: {}, requestAmount: {})", loginUserId, request.groupId(), request.amount());
 
         PaymentResponse response = paymentService.processPayment(loginUserId, request);

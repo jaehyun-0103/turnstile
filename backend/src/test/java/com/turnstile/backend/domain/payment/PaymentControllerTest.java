@@ -55,6 +55,7 @@ class PaymentControllerTest {
 
         // when & then: API 호출 및 JSON 응답 필드 검증
         mockMvc.perform(post("/api/v1/payments")
+                        .requestAttr("paymentGroupId", "group-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

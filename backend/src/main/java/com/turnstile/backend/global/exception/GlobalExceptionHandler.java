@@ -1,6 +1,7 @@
 package com.turnstile.backend.global.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -78,6 +79,20 @@ public class GlobalExceptionHandler {
                         .code(ErrorCode.INVALID_INPUT_VALUE.getCode())
                         .message(errorMessage)
                         .build());
+    }
+
+    /**
+     * 데이터베이스 비관적 락 경합으로 인해 발생하는 동시성 충돌 예외를 409 에러로 응답합니다.
+     */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    protected ResponseEntity<ErrorResponse> handleLockConflict(
+            PessimisticLockingFailureException e
+    ) {
+        log.warn("[Global] Concurrency Exception | Fail - Code: {} (message: {})", ErrorCode.CONCURRENCY_CONFLICT.getCode(), e.getMessage());
+
+        return ResponseEntity
+                .status(ErrorCode.CONCURRENCY_CONFLICT.getStatus())
+                .body(ErrorResponse.of(ErrorCode.CONCURRENCY_CONFLICT));
     }
 
     /**

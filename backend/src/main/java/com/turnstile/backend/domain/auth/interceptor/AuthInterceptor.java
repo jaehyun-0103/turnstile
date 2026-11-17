@@ -66,11 +66,26 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 엔드포인트(URI) 성격에 따른 3-Tier 인가 정책 적용 (Fail-Fast)
         if (uri.startsWith("/api/v1/payments")) {
-            // LEVEL 3: 결제 도메인은 반드시 PAYMENT 토큰만 허용
+            // LEVEL 3: 결제 도메인은 반드시 PAYMENT 토큰 및 유효한 예약 그룹 클레임이 포함된 경우만 허용
             if (!tokenType.hasAccess(TokenType.PAYMENT)) {
                 log.warn("[Auth] Verify Access | Fail - Access Denied for Payment API (userId: {}, type: {})", userId, tokenType.name());
-                throw new TurnstileException(ErrorCode.ACCESS_DENIED, "결제 API 접근 권한이 부족합니다.");
+                throw new TurnstileException(
+                        ErrorCode.ACCESS_DENIED,
+                        "결제 API 접근 권한이 부족합니다."
+                );
             }
+
+            String paymentGroupId = claims.get("groupId", String.class);
+
+            if (!StringUtils.hasText(paymentGroupId)) {
+                log.warn("[Auth] Verify Access | Fail - GroupId claim is missing in Payment Token (userId: {})", userId);
+                throw new TurnstileException(
+                        ErrorCode.INVALID_TOKEN,
+                        "결제 토큰에 예약 그룹 정보가 없습니다."
+                );
+            }
+
+            request.setAttribute("paymentGroupId", paymentGroupId);
         } else if (uri.equals("/api/v1/reservations/my")) {
             // LEVEL 1: 내 예매 내역 조회는 대기열 통과 없이 IDENTITY 이상으로 허용
             if (!tokenType.hasAccess(TokenType.IDENTITY)) {

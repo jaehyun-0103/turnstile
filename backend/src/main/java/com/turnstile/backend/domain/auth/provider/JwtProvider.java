@@ -98,6 +98,27 @@ public class JwtProvider {
     }
 
     /**
+     * 예약 그룹 식별자(groupId)가 포함된 결제 전용 JWT 토큰을 생성합니다.
+     */
+    public String generatePaymentToken(
+            Long userId,
+            String groupId,
+            Date expiryDate
+    ) {
+        if (groupId == null || groupId.isBlank()) {
+            throw new IllegalArgumentException("Payment groupId is required.");
+        }
+
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("type", TokenType.PAYMENT.name())
+                .claim("groupId", groupId)
+                .expiration(expiryDate)
+                .signWith(key)
+                .compact();
+    }
+
+    /**
      * 토큰의 서명을 검증하고 Payload(Claims)를 파싱하여 반환합니다.
      */
     public Claims parseClaims(String token) {

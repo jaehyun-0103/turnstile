@@ -13,9 +13,11 @@ import com.turnstile.backend.domain.payment.service.PaymentService;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.user.entity.User;
+import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -44,8 +47,15 @@ class PaymentServiceTest {
     @Mock private UserService userService;
     @Mock private ReservationRepository reservationRepository;
     @Mock private SeatRepository seatRepository;
+    @Mock private UserRepository userRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+
+    @BeforeEach
+    void setUpUserLock() {
+        given(userRepository.findByIdForUpdate(1L))
+                .willReturn(Optional.of(User.builder().id(1L).build()));
+    }
 
     @Test
     @DisplayName("결제 성공 시 모든 검증을 통과하고 PAID 상태와 잔액을 반환해야 한다")
@@ -73,6 +83,7 @@ class PaymentServiceTest {
         given(reservationRepository.findAllByGroupIdWithSeat(groupId)).willReturn(List.of(mockReservation));
         given(reservationRepository.confirmReservations(groupId)).willReturn(1);
         given(userService.deductBalance(1L, 150000L)).willReturn(50000L);
+        given(seatRepository.confirmSeats(any(), any(), any())).willReturn(1);
 
         Payment mockPayment = Payment.builder().id(1L).status(PaymentStatus.PAID).paidAt(LocalDateTime.now()).build();
         given(paymentRepository.save(any(Payment.class))).willReturn(mockPayment);

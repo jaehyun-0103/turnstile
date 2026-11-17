@@ -9,6 +9,7 @@ import com.turnstile.backend.domain.payment.repository.PaymentRepository;
 import com.turnstile.backend.domain.queue.event.UserTicketingCompletedEvent;
 import com.turnstile.backend.domain.reservation.entity.Reservation;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
+import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.domain.user.service.UserService;
 import com.turnstile.backend.global.event.SeatCacheEvictEvent;
 import com.turnstile.backend.global.exception.ErrorCode;
@@ -31,6 +32,7 @@ import java.util.List;
 public class PaymentService {
 
     private final UserService userService;
+    private final UserRepository userRepository;
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final PaymentRepository paymentRepository;
@@ -44,6 +46,10 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse processPayment(Long userId, PaymentRequest request) {
+        // 데드락 방지 및 동일 사용자의 예약·결제 동시 요청 직렬화를 위해 사용자 행에 비관적 락 획득
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
+
         // 예약 정보 존재 여부 확인
         List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(request.groupId());
         if (reservations.isEmpty()) {
@@ -79,6 +85,16 @@ public class PaymentService {
             throw new TurnstileException(ErrorCode.ALREADY_PAID, "요청 그룹 ID: " + request.groupId());
         }
 
+        // 부분 확정으로 인한 데이터 불일치 방지 검증
+        if (updatedReservationCount != reservations.size()) {
+            log.warn("[Payment] Validation | Fail - Partial confirmation conflict (groupId: {}, expected: {}, updated: {})",
+                    request.groupId(), reservations.size(), updatedReservationCount);
+            throw new TurnstileException(
+                    ErrorCode.CONCURRENCY_CONFLICT,
+                    "예약 그룹 전체를 확정하지 못했습니다."
+            );
+        }
+
         // 유저 잔액 차감 처리 수행
         Long remainingBalance = userService.deductBalance(userId, totalAmount);
 
@@ -87,8 +103,15 @@ public class PaymentService {
                 .map(r -> r.getSeat().getId())
                 .toList();
 
-        // 인덱스를 직접 타격하는 고성능 벌크 업데이트 메서드 호출
-        seatRepository.confirmSeats(seatIds);
+        // 점유 소유자 및 만료 시점을 검증하여 좌석 상태를 판매 완료(SOLD)로 일괄 확정
+        int confirmedSeatCount =
+                seatRepository.confirmSeats(seatIds, userId, LocalDateTime.now());
+
+        if (confirmedSeatCount != seatIds.size()) {
+            log.warn("[Payment] Confirm Seats | Fail - Invalid or expired seat hold (userId: {}, groupId: {}, expected: {}, confirmed: {})",
+                    userId, request.groupId(), seatIds.size(), confirmedSeatCount);
+            throw new TurnstileException(ErrorCode.INVALID_SEAT_HOLD);
+        }
 
         // 결제 이력 생성 및 영속화
         Payment payment = paymentRepository.save(Payment.builder()

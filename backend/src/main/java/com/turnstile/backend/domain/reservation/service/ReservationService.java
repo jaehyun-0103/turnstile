@@ -1,6 +1,5 @@
 package com.turnstile.backend.domain.reservation.service;
 
-import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Seat;
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
@@ -24,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -58,6 +58,10 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse reserveSeats(Long userId, ReservationRequest request) {
+        // 동일 사용자의 동시 다발적인 중복 예약 생성을 직렬화하기 위해 사용자 행에 비관적 락 획득
+        User userRef = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
+
         // 이미 해당 콘서트에 대해 결제 대기(PENDING) 중인 예약이 있는지 사전 검증 (Fail-fast)
         if (reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)) {
             log.warn("[Reservation] Reserve Seats | Fail - Already has pending reservation (userId: {}, concertId: {})", userId, request.concertId());
@@ -127,7 +131,6 @@ public class ReservationService {
             throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD);
         }
 
-        User userRef = userRepository.getReferenceById(userId);
         String groupId = UUID.randomUUID().toString();
 
         List<Reservation> reservations = seats.stream()
@@ -147,9 +150,18 @@ public class ReservationService {
         Long scheduleId = seats.getFirst().getSchedule().getId();
         eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
 
-        long paymentExpiryMillis = paymentExpirySeconds * 1000L;
-        Date paymentExpiryDate = new Date(System.currentTimeMillis() + paymentExpiryMillis);
-        String paymentToken = jwtProvider.generateToken(userId, TokenType.PAYMENT, paymentExpiryDate);
+        // 결제 토큰 만료 시각이 좌석 임시 점유 만료 시각을 초과하지 않도록 상한 제한
+        LocalDateTime configuredPaymentExpiry = now.plusSeconds(paymentExpirySeconds);
+        LocalDateTime paymentExpiresAt = expiresAt.isBefore(configuredPaymentExpiry)
+                ? expiresAt
+                : configuredPaymentExpiry;
+
+        Date paymentExpiryDate = Date.from(
+                paymentExpiresAt.atZone(ZoneId.systemDefault()).toInstant()
+        );
+
+        String paymentToken =
+                jwtProvider.generatePaymentToken(userId, groupId, paymentExpiryDate);
 
         log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", userId, groupId, sortedSeatIds.size());
 
