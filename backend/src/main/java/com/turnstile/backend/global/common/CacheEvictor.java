@@ -17,6 +17,15 @@ public class CacheEvictor {
      * Reservation(HOLD), Payment(SOLD), Scheduler(RELEASE) 시점에 호출됩니다.
      */
     public void evictSeatCache(Long scheduleId) {
-        log.info("[Global] Cache Eviction | Success (type: Seat, scheduleId: {})", scheduleId);
+        String key = SeatCacheKeys.seats(scheduleId);
+        Boolean deleted = redisTemplate.delete(key);
+
+        if (Boolean.TRUE.equals(deleted)) {
+            log.info("[Global] Cache Eviction | Success (type: Seat, scheduleId: {})", scheduleId);
+        } else if (Boolean.FALSE.equals(deleted)) {
+            log.debug("[Global] Cache Eviction | Skip - Already absent (type: Seat, scheduleId: {})", scheduleId);
+        } else {
+            log.warn("[Global] Cache Eviction | Fail - No result from Redis (type: Seat, scheduleId: {})", scheduleId);
+        }
     }
 }
