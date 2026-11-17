@@ -14,5 +14,9 @@ public record ReservationRequest(
         Long concertId,
 
         @NotEmpty(message = "최소 1개 이상의 좌석을 선택해야 합니다.")
-        List<Long> seatIds
+        List<
+                @NotNull(message = "좌석 ID는 필수 값입니다.")
+                @Positive(message = "좌석 ID는 양수여야 합니다.")
+                        Long
+                > seatIds
 ) {}

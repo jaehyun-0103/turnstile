@@ -139,8 +139,7 @@ class JwtProviderUnitTest {
     @DisplayName("다른 서명키로 발급한 토큰은 INVALID_TOKEN으로 거부한다")
     void rejectTokenSignedWithDifferentKey() {
         // given: 다른 비밀키를 사용하는 JwtProvider로 토큰 생성
-        JwtProvider otherProvider =
-                new JwtProvider("different-test-key-for-signature-check-2026");
+        JwtProvider otherProvider = new JwtProvider("different-test-key-for-signature-check-2026");
 
         String token = otherProvider.generateToken(1L, TokenType.IDENTITY);
 

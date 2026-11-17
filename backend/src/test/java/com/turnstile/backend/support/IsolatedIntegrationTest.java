@@ -49,7 +49,7 @@ public abstract class IsolatedIntegrationTest {
         REDIS.start();
 
         System.out.printf(
-                "IMP009_INFRA mysql=%s:%d redis=%s:%d%n",
+                "TEST_INFRA mysql=%s:%d redis=%s:%d%n",
                 MYSQL.getHost(),
                 MYSQL.getMappedPort(3306),
                 REDIS.getHost(),

@@ -3,10 +3,13 @@ package com.turnstile.backend.global.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -80,6 +83,22 @@ public class GlobalExceptionHandler {
                         .message(errorMessage)
                         .build());
     }
+
+    /**
+     * JSON 파싱 실패 및 필수 요청 파라미터 누락·타입 불일치 예외를 400 에러로 응답합니다.
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class
+    })
+    protected ResponseEntity<ErrorResponse> handleRequestBindingException(
+            Exception e
+    ) {
+        log.warn("[Global] Client Exception | Fail - Code: {} (exception: {})", ErrorCode.INVALID_INPUT_VALUE.getCode(), e.getClass().getSimpleName());
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getStatus()).body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE));
+    }
+
 
     /**
      * 데이터베이스 비관적 락 경합으로 인해 발생하는 동시성 충돌 예외를 409 에러로 응답합니다.
