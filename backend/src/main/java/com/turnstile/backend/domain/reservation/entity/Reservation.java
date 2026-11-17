@@ -8,7 +8,15 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reservation")
+@Table(
+        name = "reservation",
+        indexes = {
+                @Index(
+                        name = "idx_reservation_group_id",
+                        columnList = "group_id"
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

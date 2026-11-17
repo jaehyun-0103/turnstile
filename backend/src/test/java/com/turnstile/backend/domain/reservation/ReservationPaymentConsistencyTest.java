@@ -690,4 +690,39 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         assertThat(reservations.findAll()).hasSize(4).allMatch(reservation -> reservation.getStatus() == ReservationStatus.PENDING);
         assertThat(seats.findAll()).allMatch(seat -> seat.getStatus() == SeatStatus.HOLD);
     }
+
+    @Test
+    @DisplayName("신규 스키마 초기화 시 조회 성능 최적화를 위한 예약 및 좌석 테이블 인덱스가 정상 생성되어야 한다")
+    void should_create_query_indexes_for_fresh_schema() {
+        // given: information_schema에서 인덱스 컬럼 구성을 순서대로 조회하는 SQL 정의
+        String indexColumnsSql = """
+                SELECT GROUP_CONCAT(
+                    COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ','
+                )
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?
+                  AND NON_UNIQUE = 1
+                """;
+
+        // when: reservation 및 seat 테이블의 대상 인덱스 컬럼 구성 조회
+        String reservationIndexColumns = jdbc.queryForObject(
+                indexColumnsSql,
+                String.class,
+                "reservation",
+                "idx_reservation_group_id"
+        );
+
+        String seatIndexColumns = jdbc.queryForObject(
+                indexColumnsSql,
+                String.class,
+                "seat",
+                "idx_seat_status_hold_expires"
+        );
+
+        // then: 단일 및 복합 인덱스의 컬럼 순서가 의도한 스키마 정의와 일치하는지 검증
+        assertThat(reservationIndexColumns).isEqualTo("group_id");
+        assertThat(seatIndexColumns).isEqualTo("status,hold_expires_at");
+    }
 }
