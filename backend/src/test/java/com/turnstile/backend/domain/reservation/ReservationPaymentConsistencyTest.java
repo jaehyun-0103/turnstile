@@ -22,6 +22,12 @@ import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.common.CacheEvictor;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.dao.QueryTimeoutException;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -74,6 +80,9 @@ class ReservationPaymentConsistencyTest {
     @Autowired MockMvc mockMvc;
     @Autowired JwtProvider jwtProvider;
     @Autowired ObjectMapper objectMapper;
+
+    @Autowired
+    MeterRegistry meterRegistry;
 
     // DB 경합과 HTTP 토큰 검증에 집중하며 Redis ACTIVE 판정 및 백그라운드 스케줄러는 모의 처리함
     @MockitoBean QueueRedisRepository queue;
@@ -384,5 +393,132 @@ class ReservationPaymentConsistencyTest {
 
         // when & then: INVALID_SEAT_HOLD 예외 발생 및 전체 트랜잭션 롤백 검증
         assertPaymentRollback(reserved, ErrorCode.INVALID_SEAT_HOLD, 10000L);
+    }
+
+    /**
+     * 지정된 후처리 작업(operation)의 실패 메트릭 카운터 값을 조회합니다.
+     */
+    private double postCommitFailureCount(String operation) {
+        Counter counter = meterRegistry
+                .find("turnstile.post_commit.failures")
+                .tag("operation", operation)
+                .counter();
+
+        return counter == null ? 0 : counter.count();
+    }
+
+    @Test
+    @DisplayName("결제 커밋 이후 Redis 후처리에서 지연이나 예외가 발생해도 결제 성공 응답과 DB 정합성은 유지되어야 한다")
+    void should_keep_successful_payment_when_post_commit_redis_fails() throws Exception {
+        // given: 2석 임시 점유 완료 및 이전 예약 커밋 시점의 모의 객체 호출 이력 초기화
+        ReservationResponse reserved =
+                reserve(userA, seatIds.subList(0, 2));
+
+        clearInvocations(queue, cacheEvictor);
+
+        double queueFailuresBefore = postCommitFailureCount("queue_remove");
+        double cacheFailuresBefore = postCommitFailureCount("seat_cache_evict");
+
+        // 후처리 경계에서의 네트워크 장애 상황을 재현하기 위해 지연 및 Redis 예외 주입
+        doAnswer(invocation -> {
+            Thread.sleep(200);
+            throw new QueryTimeoutException("Injected queue timeout");
+        }).when(queue).removeActiveUser(anyString(), anyString());
+
+        doThrow(new RedisConnectionFailureException(
+                "Injected cache connection failure"
+        )).when(cacheEvictor).evictSeatCache(anyLong());
+
+        PaymentRequest request = paymentRequest(reserved.groupId(), 2000L);
+
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        long started = System.nanoTime();
+
+        // when: 결제 API 호출
+        mockMvc.perform(post("/api/v1/payments")
+                        .header("Authorization", "Bearer " + reserved.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk());
+
+        long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+
+        // then: 프론트엔드 타임아웃(5초) 이내 정상 응답, DB 결제 확정 및 실패 메트릭 증가 확인
+        assertThat(elapsedMillis).isLessThan(5000L);
+        assertThat(elapsedMillis).isGreaterThanOrEqualTo(150L);
+
+        assertThat(payments.count()).isEqualTo(1);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(8000L);
+        assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.PAID);
+
+        for (Long id : seatIds.subList(0, 2)) {
+            assertThat(seats.findById(id).orElseThrow().getStatus())
+                    .isEqualTo(SeatStatus.SOLD);
+        }
+
+        assertThat(postCommitFailureCount("queue_remove")).isEqualTo(queueFailuresBefore + 1);
+        assertThat(postCommitFailureCount("seat_cache_evict")).isEqualTo(cacheFailuresBefore + 1);
+
+        verify(queue).removeActiveUser(
+                String.valueOf(concert.getId()),
+                String.valueOf(userA.getId())
+        );
+
+        verify(cacheEvictor).evictSeatCache(anyLong());
+
+        // when & then: 네트워크 지연으로 응답을 못 받은 사용자의 중복 재요청 시 400 응답 및 이중 차감·후처리 재실행 방지 확인
+        mockMvc.perform(post("/api/v1/payments")
+                        .header("Authorization", "Bearer " + reserved.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest());
+
+        assertThat(payments.count()).isEqualTo(1);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(8000L);
+
+        verify(queue, times(1)).removeActiveUser(anyString(), anyString());
+        verify(cacheEvictor, times(1)).evictSeatCache(anyLong());
+    }
+
+    @Test
+    @DisplayName("결제 트랜잭션이 롤백되는 경우 커밋 이후 후처리 리스너는 실행되지 않아야 한다")
+    void should_not_execute_post_commit_handlers_on_rollback() throws Exception {
+        // given: 2석 임시 점유 완료 및 잔액 부족 롤백 유도를 위해 사용자 잔액을 0원으로 변경
+        ReservationResponse reserved = reserve(userA, seatIds.subList(0, 2));
+
+        clearInvocations(queue, cacheEvictor);
+
+        double queueFailuresBefore = postCommitFailureCount("queue_remove");
+        double cacheFailuresBefore = postCommitFailureCount("seat_cache_evict");
+
+        jdbc.update(
+                "UPDATE users SET balance = 0 WHERE id = ?",
+                userA.getId()
+        );
+
+        // when: 잔액 부족 상태에서 결제 API 호출
+        mockMvc.perform(post("/api/v1/payments")
+                        .header("Authorization", "Bearer " + reserved.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                paymentRequest(reserved.groupId(), 2000L))))
+                .andExpect(status().isBadRequest());
+
+        // then: 트랜잭션 롤백에 따라 후처리 리스너 미실행 및 예약·좌석 상태 유지 확인
+        verify(queue, never()).removeActiveUser(anyString(), anyString());
+        verify(cacheEvictor, never()).evictSeatCache(anyLong());
+
+        assertThat(postCommitFailureCount("queue_remove")).isEqualTo(queueFailuresBefore);
+        assertThat(postCommitFailureCount("seat_cache_evict")).isEqualTo(cacheFailuresBefore);
+
+        assertThat(payments.count()).isZero();
+        assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.PENDING);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isZero();
+
+        for (Long id : seatIds.subList(0, 2)) {
+            assertThat(seats.findById(id).orElseThrow().getStatus())
+                    .isEqualTo(SeatStatus.HOLD);
+        }
     }
 }
