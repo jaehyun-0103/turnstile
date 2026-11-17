@@ -54,12 +54,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 좌석 예약 및 결제 처리 과정에서의 동시성 제어, 토큰 인가 검증 및 트랜잭션 데이터 정합성을 검증하는 통합 테스트입니다.
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_imp005?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
+        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_test?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
         "spring.datasource.username=root",
-        "spring.datasource.password=imp005-test-only",
+        "spring.datasource.password=test-only",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.show-sql=false",
-        "jwt.secret=imp005-isolated-test-signing-key-only-2026",
+        "jwt.secret=isolated-test-signing-key-only-2026",
         "reservation.policy.hold-time-seconds=120",
         "reservation.policy.payment-ttl-seconds=120"
 })

@@ -46,17 +46,17 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_imp005?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
+        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_test?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
         "spring.datasource.username=root",
-        "spring.datasource.password=imp005-test-only",
+        "spring.datasource.password=test-only",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.show-sql=false",
         "spring.data.redis.host=localhost",
         "spring.data.redis.port=16379",
-        "jwt.secret=imp007-isolated-test-signing-key-only-2026",
+        "jwt.secret=isolated-test-signing-key-only-2026",
         "seat-cache.ttl-seconds=2"
 })
-@ActiveProfiles("imp007")
+@ActiveProfiles("test")
 @Timeout(90)
 class ConcertCacheIntegrationTest {
 
@@ -90,6 +90,7 @@ class ConcertCacheIntegrationTest {
 
     @BeforeEach
     void prepare() {
+        // 테스트 격리를 위한 기존 데이터 및 Redis 키 초기화
         payments.deleteAllInBatch();
         reservations.deleteAllInBatch();
         seats.deleteAllInBatch();
@@ -97,14 +98,11 @@ class ConcertCacheIntegrationTest {
         concerts.deleteAllInBatch();
         users.deleteAllInBatch();
 
-        userA = users.save(User.builder()
-                .username("imp007-a").name("테스트 A").balance(10000L).build());
-
-        userB = users.save(User.builder()
-                .username("imp007-b").name("테스트 B").balance(10000L).build());
+        userA = users.save(User.builder().username("test-user-a").name("테스트 A").balance(10000L).build());
+        userB = users.save(User.builder().username("test-user-b").name("테스트 B").balance(10000L).build());
 
         concert = concerts.save(Concert.builder()
-                .title("IMP-007 테스트")
+                .title("캐시 통합 테스트 콘서트")
                 .ticketingStartAt(LocalDateTime.now().minusDays(1))
                 .build());
 
@@ -145,8 +143,7 @@ class ConcertCacheIntegrationTest {
     }
 
     private String state() {
-        return concertService.getSeats(schedule.getId())
-                .seats().getFirst().status();
+        return concertService.getSeats(schedule.getId()).seats().getFirst().status();
     }
 
     private void makeHoldExpired() {
@@ -158,13 +155,11 @@ class ConcertCacheIntegrationTest {
     }
 
     private void runRecovery(boolean rollback) {
-        TransactionTemplate transaction =
-                new TransactionTemplate(transactionManager);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
         transaction.executeWithoutResult(status -> {
-            // 자동 실행은 막고 실제 복구 메서드를 명시적 트랜잭션에서 실행함
-            new SeatHoldScheduler(seats, reservations, events)
-                    .recoverExpiredSeats();
+            // 스케줄러 자동 실행은 차단하고 실제 복구 메서드를 명시적 트랜잭션 내에서 호출
+            new SeatHoldScheduler(seats, reservations, events).recoverExpiredSeats();
 
             if (rollback) {
                 status.setRollbackOnly();
@@ -181,7 +176,7 @@ class ConcertCacheIntegrationTest {
         doAnswer(invocation -> {
             Long scheduleId = invocation.getArgument(0);
 
-            // Repository의 추상 메서드를 직접 호출하지 않고 실제 DB를 조회함
+            // 스파이 객체의 추상 메서드 재귀 호출을 방지하고 실제 DB 쿼리 실행
             List<Seat> result = entityManager.createQuery(
                             "SELECT s FROM Seat s WHERE s.schedule.id = :scheduleId",
                             Seat.class
@@ -202,10 +197,12 @@ class ConcertCacheIntegrationTest {
     }
 
     @Test
-    void cacheHitAndConfiguredTtl() {
+    @DisplayName("좌석 목록 반복 조회 시 캐시가 적중하여 DB를 1회만 조회하고 설정된 TTL이 적용되어야 한다")
+    void should_hit_cache_and_apply_configured_ttl() {
         assertThat(state()).isEqualTo("AVAILABLE");
         assertThat(state()).isEqualTo("AVAILABLE");
 
+        // then: DB 조회 1회 발생 및 설정된 TTL(2초 이하) 적용 검증
         verify(seats, times(1)).findAllBySchedule_Id(schedule.getId());
 
         Long ttl = redis.getExpire(cacheKey, TimeUnit.MILLISECONDS);
@@ -214,11 +211,14 @@ class ConcertCacheIntegrationTest {
     }
 
     @Test
-    void holdAndPaymentEvictOnlyTargetCache() {
+    @DisplayName("좌석 점유 및 결제 완료 시 대상 회차의 캐시만 무효화되고 타 회차 캐시는 유지되어야 한다")
+    void should_evict_only_target_cache_on_hold_and_payment() {
+        // given: 대상 회차 및 타 회차 캐시 사전 적재
         assertThat(state()).isEqualTo("AVAILABLE");
         redis.expire(cacheKey, Duration.ofSeconds(30));
         redis.opsForValue().set(otherKey, "other-schedule", Duration.ofSeconds(30));
 
+        // when & then: 좌석 점유 시 대상 캐시 무효화, 타 회차 캐시 유지 및 HOLD 상태 반영 검증
         ReservationResponse reserved = reserve(userA);
 
         assertThat(redis.hasKey(cacheKey)).isFalse();
@@ -227,6 +227,7 @@ class ConcertCacheIntegrationTest {
 
         redis.expire(cacheKey, Duration.ofSeconds(30));
 
+        // when & then: 결제 완료 시 대상 캐시 무효화, 타 회차 캐시 유지 및 SOLD 상태 반영 검증
         paymentService.processPayment(
                 userA.getId(),
                 new PaymentRequest(reserved.groupId(), 1000L, concert.getId())
@@ -238,23 +239,29 @@ class ConcertCacheIntegrationTest {
     }
 
     @Test
-    void expiredHoldRecoveryEvictsAfterCommit() {
+    @DisplayName("만료된 점유 좌석 복구 트랜잭션이 커밋되면 좌석 상태가 초기화되고 캐시가 무효화되어야 한다")
+    void should_evict_cache_after_commit_when_recovering_expired_hold() {
+        // given: 좌석 점유 후 만료 시점 경과 처리
         reserve(userA);
         assertThat(state()).isEqualTo("HOLD");
         redis.expire(cacheKey, Duration.ofSeconds(30));
 
         makeHoldExpired();
+
+        // when: 만료 좌석 복구 실행 및 커밋
         runRecovery(false);
 
+        // then: 캐시 무효화, 좌석 AVAILABLE 복구 및 예약 EXPIRED 상태 변경 검증
         assertThat(redis.hasKey(cacheKey)).isFalse();
         assertThat(state()).isEqualTo("AVAILABLE");
 
-        assertThat(reservations.findAll())
-                .allMatch(r -> r.getStatus() == ReservationStatus.EXPIRED);
+        assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.EXPIRED);
     }
 
     @Test
-    void rollbackKeepsCache() {
+    @DisplayName("만료 좌석 복구 트랜잭션이 롤백되면 기존 캐시와 점유 상태가 그대로 유지되어야 한다")
+    void should_keep_cache_and_hold_state_when_recovery_rolls_back() {
+        // given: 좌석 점유 후 만료 시점 경과 및 기존 캐시 값 확보
         reserve(userA);
         assertThat(state()).isEqualTo("HOLD");
         redis.expire(cacheKey, Duration.ofSeconds(30));
@@ -262,19 +269,22 @@ class ConcertCacheIntegrationTest {
         String before = redis.opsForValue().get(cacheKey);
 
         makeHoldExpired();
+
+        // when: 만료 좌석 복구 실행 후 강제 롤백
         runRecovery(true);
 
+        // then: 기존 캐시 데이터, 좌석 HOLD 상태 및 예약 PENDING 상태 유지 검증
         assertThat(redis.opsForValue().get(cacheKey)).isEqualTo(before);
 
-        assertThat(seats.findById(seat.getId()).orElseThrow().getStatus())
-                .isEqualTo(SeatStatus.HOLD);
+        assertThat(seats.findById(seat.getId()).orElseThrow().getStatus()).isEqualTo(SeatStatus.HOLD);
 
-        assertThat(reservations.findAll())
-                .allMatch(r -> r.getStatus() == ReservationStatus.PENDING);
+        assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.PENDING);
     }
 
     @Test
-    void expiredOwnerCannotDeleteReplacementLock() throws Exception {
+    @DisplayName("분산 락 만료 이후 뒤늦게 작업을 마친 기존 소유자는 타인의 신규 락을 해제할 수 없어야 한다")
+    void should_not_delete_replacement_lock_by_expired_owner() throws Exception {
+        // given: 첫 번째 조회 스레드가 DB 조회 지점에서 지연되도록 설정
         CountDownLatch read = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         blockFirstSeatRead(read, release);
@@ -286,7 +296,7 @@ class ConcertCacheIntegrationTest {
                     executor.submit(() -> concertService.getSeats(schedule.getId()));
 
             if (!read.await(5, TimeUnit.SECONDS)) {
-                // 작업이 예외로 끝났다면 실제 원인을 출력하도록 함
+                // 작업이 예외로 종료된 경우 실제 원인을 즉시 노출
                 future.get(1, TimeUnit.SECONDS);
 
                 throw new AssertionError(
@@ -297,7 +307,7 @@ class ConcertCacheIntegrationTest {
             String firstToken = redis.opsForValue().get(lockKey);
             assertThat(firstToken).isNotBlank().isNotEqualTo("locked");
 
-            // 실제 3초 락 TTL을 넘긴 뒤 다른 소유자의 락을 획득함
+            // when: 기존 락 TTL 만료 대기 후 새로운 소유자가 동일 키의 락을 선점하고 기존 스레드 재개
             Thread.sleep(3200);
 
             assertThat(redis.opsForValue().setIfAbsent(
@@ -309,8 +319,8 @@ class ConcertCacheIntegrationTest {
             release.countDown();
             future.get(5, TimeUnit.SECONDS);
 
-            assertThat(redis.opsForValue().get(lockKey))
-                    .isEqualTo("replacement-owner");
+            // then: 기존 소유자 종료 후에도 신규 소유자의 락 토큰이 삭제되지 않고 유지되는지 검증
+            assertThat(redis.opsForValue().get(lockKey)).isEqualTo("replacement-owner");
         } finally {
             release.countDown();
             executor.shutdownNow();
@@ -318,7 +328,9 @@ class ConcertCacheIntegrationTest {
     }
 
     @Test
-    void staleRefillExpiresAndDbRejectsDuplicateHold() throws Exception {
+    @DisplayName("지연된 조회로 구 상태 캐시가 재적재되어도 DB 낙관적 검증으로 중복 점유를 차단하고 TTL 만료 후 최신 상태를 복구해야 한다")
+    void should_reject_duplicate_hold_and_recover_from_stale_cache_refill() throws Exception {
+        // given: 첫 번째 조회 스레드가 AVAILABLE 상태를 읽은 뒤 지연되도록 설정
         CountDownLatch read = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         blockFirstSeatRead(read, release);
@@ -326,11 +338,10 @@ class ConcertCacheIntegrationTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         try {
-            Future<SeatListResponse> future =
-                    executor.submit(() -> concertService.getSeats(schedule.getId()));
+            Future<SeatListResponse> future = executor.submit(() -> concertService.getSeats(schedule.getId()));
 
             if (!read.await(5, TimeUnit.SECONDS)) {
-                // 작업이 예외로 끝났다면 실제 원인을 출력하도록 함
+                // 작업이 예외로 종료된 경우 실제 원인을 즉시 노출
                 future.get(1, TimeUnit.SECONDS);
 
                 throw new AssertionError(
@@ -338,18 +349,18 @@ class ConcertCacheIntegrationTest {
                 );
             }
 
-            // 조회가 AVAILABLE을 읽은 뒤 HOLD가 커밋되고 캐시 삭제가 실행됨
+            // 조회 스레드가 AVAILABLE을 읽은 직후 선행 예약이 커밋되어 캐시 무효화 실행
             reserve(userA);
             assertThat(redis.hasKey(cacheKey)).isFalse();
 
-            // 지연된 조회가 이전 AVAILABLE 목록을 다시 저장함
+            // when: 지연되었던 조회 스레드가 재개되어 이전 AVAILABLE 목록을 캐시에 재적재
             release.countDown();
 
-            assertThat(future.get(5, TimeUnit.SECONDS)
-                    .seats().getFirst().status()).isEqualTo("AVAILABLE");
+            assertThat(future.get(5, TimeUnit.SECONDS).seats().getFirst().status()).isEqualTo("AVAILABLE");
 
             assertThat(state()).isEqualTo("AVAILABLE");
 
+            // then: 캐시가 AVAILABLE로 보이더라도 실제 DB 조건부 업데이트 단계에서 중복 점유 차단 검증
             TurnstileException error = assertThrows(
                     TurnstileException.class,
                     () -> reserve(userB)
@@ -358,9 +369,9 @@ class ConcertCacheIntegrationTest {
             assertThat(error.getErrorCode()).isEqualTo(ErrorCode.SEAT_ALREADY_HELD);
             assertThat(reservations.count()).isEqualTo(1);
 
-            assertThat(seats.findById(seat.getId()).orElseThrow().getStatus())
-                    .isEqualTo(SeatStatus.HOLD);
+            assertThat(seats.findById(seat.getId()).orElseThrow().getStatus()).isEqualTo(SeatStatus.HOLD);
 
+            // then: 설정된 짧은 TTL 만료 후 캐시가 제거되고 DB 기준 HOLD 상태로 정상 복구되는지 검증
             long started = System.nanoTime();
             long deadline = started + TimeUnit.SECONDS.toNanos(5);
 
@@ -378,7 +389,7 @@ class ConcertCacheIntegrationTest {
                     System.nanoTime() - started
             );
 
-            System.out.println("IMP007_STALE_RECOVERY_MS=" + elapsed);
+            System.out.println("STALE_RECOVERY_MS=" + elapsed);
         } finally {
             release.countDown();
             executor.shutdownNow();

@@ -27,20 +27,20 @@ public class UserService {
      */
     @Transactional
     public Long deductBalance(Long userId, Long amount) {
-        // 차감 전 현재 영속성 컨텍스트에 확보되어 있는 유저의 기존 잔액을 먼저 로컬 변수로 안전하게 확보
-        Long currentBalance = userRepository.findById(userId)
-                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND))
-                .getBalance();
+        userRepository.findById(userId).orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
 
         int updatedCount = userRepository.deductBalance(userId, amount);
         if (updatedCount == 0) {
             throw new TurnstileException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        // clearAutomatically = true 옵션으로 영속성 컨텍스트가 비워졌으므로 DB에서 최신 상태 조회
+        Long remainingBalance = userRepository.findById(userId)
+                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND))
+                .getBalance();
         log.info("[User] Deduct Balance | Success (userId: {}, amount: {})", userId, amount);
 
-        // 영속성 컨텍스트 초기화로 인한 불필요한 DB 재조회를 완전 제거하고, 메모리 확보 값으로 즉시 연산 반환
-        return currentBalance - amount;
+        return remainingBalance;
     }
 
     /**

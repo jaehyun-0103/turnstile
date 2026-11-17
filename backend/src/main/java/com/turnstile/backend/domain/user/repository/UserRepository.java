@@ -2,7 +2,6 @@ package com.turnstile.backend.domain.user.repository;
 
 import com.turnstile.backend.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,14 +15,13 @@ import java.util.Optional;
  */
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Cacheable(cacheNames = "user:info", key = "#username", unless = "#result == null")
     Optional<User> findByUsername(String username);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :userId")
     Optional<User> findByIdForUpdate(@Param("userId") Long userId);
 
-    // DB 락(Pessimistic Lock) 대기 시간 없이 쿼리 조건(balance >= amount)만으로 초과 차감을 방어함
+    // 잔액 조건을 포함한 원자적 UPDATE로 초과 차감을 방어함
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.balance = u.balance - :amount " +
             "WHERE u.id = :userId AND u.balance >= :amount")
