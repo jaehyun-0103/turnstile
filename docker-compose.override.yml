@@ -12,6 +12,7 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=local
+      - DEMO_BALANCE_CHARGE_ENABLED=true
 
   frontend:
     ports:

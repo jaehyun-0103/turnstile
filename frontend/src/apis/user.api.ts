@@ -14,9 +14,9 @@ export const getMyBalance = async (): Promise<UserBalanceResponse> => {
 };
 
 /**
- * 유저 잔액 충전
+ * 로그인한 본인의 잔액 충전
  */
-export const chargeBalance = async (userId: number, amount: number): Promise<UserBalanceResponse> => {
-  const response = await apiClient.patch(`/users/${userId}/balance`, { amount });
+export const chargeBalance = async (amount: number): Promise<UserBalanceResponse> => {
+  const response = await apiClient.patch("/users/me/balance", { amount });
   return response.data;
 };
