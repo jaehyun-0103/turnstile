@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.test.context.ActiveProfiles;
+import com.turnstile.backend.support.IsolatedIntegrationTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -31,19 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * 사용자 잔액의 데이터베이스 기반 정합성과 동시 차감/충전 시나리오를 검증하는 통합 테스트입니다.
  */
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_test?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
-        "spring.datasource.username=root",
-        "spring.datasource.password=test-only",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.show-sql=false",
-        "spring.data.redis.host=localhost",
-        "spring.data.redis.port=16379",
-        "jwt.secret=isolated-test-signing-key-only-2026"
-})
-@ActiveProfiles("test")
+@SpringBootTest
 @Timeout(90)
-class UserBalanceConsistencyTest {
+class UserBalanceConsistencyTest extends IsolatedIntegrationTest {
 
     @Autowired UserRepository users;
     @Autowired UserService userService;

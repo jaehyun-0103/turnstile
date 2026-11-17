@@ -27,7 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
+import com.turnstile.backend.support.IsolatedIntegrationTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -46,19 +46,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://localhost:13307/turnstile_test?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false",
-        "spring.datasource.username=root",
-        "spring.datasource.password=test-only",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.show-sql=false",
-        "spring.data.redis.host=localhost",
-        "spring.data.redis.port=16379",
-        "jwt.secret=isolated-test-signing-key-only-2026",
         "seat-cache.ttl-seconds=2"
 })
-@ActiveProfiles("test")
 @Timeout(90)
-class ConcertCacheIntegrationTest {
+class ConcertCacheIntegrationTest extends IsolatedIntegrationTest {
 
     @Autowired ConcertService concertService;
     @Autowired ReservationService reservationService;

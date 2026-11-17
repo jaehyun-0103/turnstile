@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    # 동적 컨테이너 설정이 없는 테스트는 연결에 실패하도록 함.
+    # 기존 로컬 DB로 연결하지 않음.
+    url: jdbc:mysql://127.0.0.1:1/test_connection_not_configured
+    username: test
+    password: test
+    hikari:
+      connection-timeout: 1000
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 1
+      connect-timeout: 1s
+      timeout: 1s
+
+jwt:
+  secret: imp009-isolated-test-signing-key-only-2026
