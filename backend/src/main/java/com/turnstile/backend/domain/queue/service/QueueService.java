@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
+import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 /**
@@ -27,6 +29,7 @@ public class QueueService {
 
     private final QueueRedisRepository queueRedisRepository;
     private final ConcertRepository concertRepository;
+    private final ConcertScheduleRepository concertScheduleRepository;
     private final JwtProvider jwtProvider;
 
     /**
@@ -42,8 +45,16 @@ public class QueueService {
         Concert concert = concertRepository.findById(request.concertId())
                 .orElseThrow(() -> new TurnstileException(ErrorCode.CONCERT_NOT_FOUND, "요청 콘서트 ID: " + request.concertId()));
 
-        if (LocalDateTime.now().isBefore(concert.getTicketingStartAt())) {
-            throw new TurnstileException(ErrorCode.TICKETING_NOT_OPEN, "아직 예매가 오픈되지 않았습니다. (오픈 일시: " + concert.getTicketingStartAt() + ")");
+        // 서울 표준시(Asia/Seoul) 기준 예매 오픈 여부 및 잔여 회차 존재 여부 검증
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+
+        if (now.isBefore(concert.getTicketingStartAt())) {
+            throw new TurnstileException(ErrorCode.TICKETING_NOT_OPEN);
+        }
+
+        if (!concertScheduleRepository
+                .existsByConcert_IdAndConcertDateAfter(request.concertId(), now)) {
+            throw new TurnstileException(ErrorCode.TICKETING_CLOSED);
         }
 
         Long result = queueRedisRepository.enterQueue(concertIdStr, userIdStr);

@@ -66,6 +66,7 @@ tasks.named('test', Test) {
     include '**/JwtProviderUnitTest.class'
     include '**/CacheEvictorUnitTest.class'
     include '**/ConcertServiceTest.class'
+    include '**/ConcertScheduleTimeTest.class'
     include '**/ConcertCacheIntegrationTest.class'
     include '**/ReservationServiceTest.class'
     include '**/ReservationPaymentConsistencyTest.class'
