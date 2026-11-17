@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -47,8 +48,7 @@ public class PaymentService {
     @Transactional
     public PaymentResponse processPayment(Long userId, PaymentRequest request) {
         // 데드락 방지 및 동일 사용자의 예약·결제 동시 요청 직렬화를 위해 사용자 행에 비관적 락 획득
-        userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
+        userRepository.findByIdForUpdate(userId).orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
 
         // 예약 정보 존재 여부 확인
         List<Reservation> reservations = reservationRepository.findAllByGroupIdWithSeat(request.groupId());
@@ -66,8 +66,7 @@ public class PaymentService {
         // 타 콘서트 대기열 우회 결제 및 엉뚱한 활성 유저 퇴출 테러를 방지하기 위한 콘서트 ID 교차 검증
         Long actualConcertId = reservations.getFirst().getSeat().getSchedule().getConcert().getId();
         if (!actualConcertId.equals(request.concertId())) {
-            log.warn("[Payment] Validate Concert | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})",
-                    request.concertId(), actualConcertId);
+            log.warn("[Payment] Validate Concert | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})", request.concertId(), actualConcertId);
             throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "결제 대상 콘서트 정보가 일치하지 않습니다.");
         }
 
@@ -87,12 +86,19 @@ public class PaymentService {
 
         // 부분 확정으로 인한 데이터 불일치 방지 검증
         if (updatedReservationCount != reservations.size()) {
-            log.warn("[Payment] Validation | Fail - Partial confirmation conflict (groupId: {}, expected: {}, updated: {})",
-                    request.groupId(), reservations.size(), updatedReservationCount);
-            throw new TurnstileException(
-                    ErrorCode.CONCURRENCY_CONFLICT,
-                    "예약 그룹 전체를 확정하지 못했습니다."
-            );
+            log.warn("[Payment] Validation | Fail - Partial confirmation conflict (groupId: {}, expected: {}, updated: {})", request.groupId(), reservations.size(), updatedReservationCount);
+            throw new TurnstileException(ErrorCode.CONCURRENCY_CONFLICT, "예약 그룹 전체를 확정하지 못했습니다.");
+        }
+
+        // 서울 표준시(Asia/Seoul) 기준 예매 가능 회차 여부 검증
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+
+        boolean hasUnavailableSchedule = reservations.stream()
+                .anyMatch(reservation ->
+                        !reservation.getSeat().getSchedule().isReservable(now));
+
+        if (hasUnavailableSchedule) {
+            throw new TurnstileException(ErrorCode.TICKETING_CLOSED);
         }
 
         // 유저 잔액 차감 처리 수행
@@ -104,12 +110,10 @@ public class PaymentService {
                 .toList();
 
         // 점유 소유자 및 만료 시점을 검증하여 좌석 상태를 판매 완료(SOLD)로 일괄 확정
-        int confirmedSeatCount =
-                seatRepository.confirmSeats(seatIds, userId, LocalDateTime.now());
+        int confirmedSeatCount = seatRepository.confirmSeats(seatIds, userId, LocalDateTime.now(ZoneId.of("Asia/Seoul")));
 
         if (confirmedSeatCount != seatIds.size()) {
-            log.warn("[Payment] Confirm Seats | Fail - Invalid or expired seat hold (userId: {}, groupId: {}, expected: {}, confirmed: {})",
-                    userId, request.groupId(), seatIds.size(), confirmedSeatCount);
+            log.warn("[Payment] Confirm Seats | Fail - Invalid or expired seat hold (userId: {}, groupId: {}, expected: {}, confirmed: {})", userId, request.groupId(), seatIds.size(), confirmedSeatCount);
             throw new TurnstileException(ErrorCode.INVALID_SEAT_HOLD);
         }
 
@@ -118,7 +122,7 @@ public class PaymentService {
                 .groupId(request.groupId())
                 .amount(totalAmount)
                 .status(PaymentStatus.PAID)
-                .paidAt(LocalDateTime.now())
+                .paidAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build());
 
         Long scheduleId = reservations.getFirst().getSeat().getSchedule().getId();

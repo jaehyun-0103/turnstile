@@ -27,4 +27,9 @@ public class ConcertSchedule extends BaseTimeEntity {
 
     @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
+
+    public boolean isReservable(LocalDateTime now) {
+        return !now.isBefore(concert.getTicketingStartAt())
+                && now.isBefore(concertDate);
+    }
 }

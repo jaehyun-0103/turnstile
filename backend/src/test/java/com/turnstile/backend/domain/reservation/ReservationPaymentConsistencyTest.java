@@ -10,6 +10,7 @@ import com.turnstile.backend.domain.payment.dto.PaymentResponse;
 import com.turnstile.backend.domain.payment.repository.PaymentRepository;
 import com.turnstile.backend.domain.payment.service.PaymentService;
 import com.turnstile.backend.domain.queue.repository.QueueRedisRepository;
+import com.turnstile.backend.domain.queue.service.QueueService;
 import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.dto.ReservationResponse;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
@@ -39,6 +40,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -48,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -63,6 +66,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
 
     @Autowired ReservationService reservationService;
     @Autowired PaymentService paymentService;
+    @Autowired QueueService queueService;
     @Autowired UserRepository users;
     @Autowired ConcertRepository concerts;
     @Autowired ConcertScheduleRepository schedules;
@@ -73,9 +77,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired JwtProvider jwtProvider;
     @Autowired ObjectMapper objectMapper;
-
-    @Autowired
-    MeterRegistry meterRegistry;
+    @Autowired MeterRegistry meterRegistry;
 
     // DB 경합과 HTTP 토큰 검증에 집중하며 Redis ACTIVE 판정 및 백그라운드 스케줄러는 모의 처리함
     @MockitoBean QueueRedisRepository queue;
@@ -98,11 +100,8 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         concerts.deleteAllInBatch();
         users.deleteAllInBatch();
 
-        userA = users.save(User.builder()
-                .username("test-user-a").name("테스트 A").balance(10000L).build());
-
-        userB = users.save(User.builder()
-                .username("test-user-b").name("테스트 B").balance(10000L).build());
+        userA = users.save(User.builder().username("test-user-a").name("테스트 A").balance(10000L).build());
+        userB = users.save(User.builder().username("test-user-b").name("테스트 B").balance(10000L).build());
 
         concert = concerts.save(Concert.builder()
                 .title("정합성 검증 테스트 콘서트")
@@ -196,16 +195,10 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         );
 
         // then: 한 건만 성공하고 나머지는 ALREADY_HAS_PENDING_RESERVATION 예외 발생 및 2석만 점유 확인
-        assertThat(results.stream()
-                .filter(ReservationResponse.class::isInstance).count())
-                .isEqualTo(1);
-
+        assertThat(results.stream().filter(ReservationResponse.class::isInstance).count()).isEqualTo(1);
         assertThat(results).contains(ErrorCode.ALREADY_HAS_PENDING_RESERVATION);
         assertThat(reservations.count()).isEqualTo(2);
-
-        assertThat(seats.findAll().stream()
-                .filter(s -> s.getStatus() == SeatStatus.HOLD).count())
-                .isEqualTo(2);
+        assertThat(seats.findAll().stream().filter(s -> s.getStatus() == SeatStatus.HOLD).count()).isEqualTo(2);
     }
 
     @Test
@@ -221,9 +214,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         );
 
         // then: 한 명만 성공하고 나머지는 SEAT_ALREADY_HELD 예외 발생 확인
-        assertThat(results.stream()
-                .filter(ReservationResponse.class::isInstance).count())
-                .isEqualTo(1);
+        assertThat(results.stream().filter(ReservationResponse.class::isInstance).count()).isEqualTo(1);
 
         assertThat(results).contains(ErrorCode.SEAT_ALREADY_HELD);
         assertThat(reservations.count()).isEqualTo(1);
@@ -242,21 +233,14 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
                 () -> paymentService.processPayment(userA.getId(), request)
         );
 
-        assertThat(results.stream()
-                .filter(PaymentResponse.class::isInstance).count())
-                .isEqualTo(1);
+        assertThat(results.stream().filter(PaymentResponse.class::isInstance).count()).isEqualTo(1);
 
         // then: 한 건만 결제 성공하고 나머지는 ALREADY_PAID 예외 발생, 잔액 1회 차감 및 SOLD 전이 확인
         assertThat(results).contains(ErrorCode.ALREADY_PAID);
         assertThat(payments.count()).isEqualTo(1);
-        assertThat(users.findById(userA.getId()).orElseThrow().getBalance())
-                .isEqualTo(6000L);
-
-        assertThat(seats.findAll())
-                .allMatch(s -> s.getStatus() == SeatStatus.SOLD);
-
-        assertThat(reservations.findAll())
-                .allMatch(r -> r.getStatus() == ReservationStatus.PAID);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(6000L);
+        assertThat(seats.findAll()).allMatch(s -> s.getStatus() == SeatStatus.SOLD);
+        assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.PAID);
     }
 
     @Test
@@ -274,8 +258,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
                 .andExpect(status().isForbidden());
 
         // when & then: 예약 그룹 클레임이 누락된 결제 토큰으로 요청하면 401 응답 반환
-        String legacyToken =
-                jwtProvider.generateToken(userA.getId(), TokenType.PAYMENT);
+        String legacyToken = jwtProvider.generateToken(userA.getId(), TokenType.PAYMENT);
 
         mockMvc.perform(post("/api/v1/payments")
                         .header("Authorization", "Bearer " + legacyToken)
@@ -299,8 +282,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
                 .andExpect(status().isForbidden());
 
         assertThat(payments.count()).isZero();
-        assertThat(users.findById(userA.getId()).orElseThrow().getBalance())
-                .isEqualTo(10000L);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(10000L);
 
         // when & then: 소유자와 예약 그룹이 모두 일치하는 정상 결제 토큰 요청 시 200 응답 및 결제 완료 확인
         mockMvc.perform(post("/api/v1/payments")
@@ -331,16 +313,11 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
 
         assertThat(error.getErrorCode()).isEqualTo(expected);
         assertThat(payments.count()).isZero();
-
-        assertThat(users.findById(userA.getId()).orElseThrow().getBalance())
-                .isEqualTo(expectedBalance);
-
-        assertThat(reservations.findAll())
-                .allMatch(r -> r.getStatus() == ReservationStatus.PENDING);
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()) .isEqualTo(expectedBalance);
+        assertThat(reservations.findAll()) .allMatch(r -> r.getStatus() == ReservationStatus.PENDING);
 
         for (Long id : seatIds.subList(0, 2)) {
-            assertThat(seats.findById(id).orElseThrow().getStatus())
-                    .isEqualTo(SeatStatus.HOLD);
+            assertThat(seats.findById(id).orElseThrow().getStatus()) .isEqualTo(SeatStatus.HOLD);
         }
     }
 
@@ -404,8 +381,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
     @DisplayName("결제 커밋 이후 Redis 후처리에서 지연이나 예외가 발생해도 결제 성공 응답과 DB 정합성은 유지되어야 한다")
     void should_keep_successful_payment_when_post_commit_redis_fails() throws Exception {
         // given: 2석 임시 점유 완료 및 이전 예약 커밋 시점의 모의 객체 호출 이력 초기화
-        ReservationResponse reserved =
-                reserve(userA, seatIds.subList(0, 2));
+        ReservationResponse reserved = reserve(userA, seatIds.subList(0, 2));
 
         clearInvocations(queue, cacheEvictor);
 
@@ -446,8 +422,7 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         assertThat(reservations.findAll()).allMatch(r -> r.getStatus() == ReservationStatus.PAID);
 
         for (Long id : seatIds.subList(0, 2)) {
-            assertThat(seats.findById(id).orElseThrow().getStatus())
-                    .isEqualTo(SeatStatus.SOLD);
+            assertThat(seats.findById(id).orElseThrow().getStatus()).isEqualTo(SeatStatus.SOLD);
         }
 
         assertThat(postCommitFailureCount("queue_remove")).isEqualTo(queueFailuresBefore + 1);
@@ -510,8 +485,209 @@ class ReservationPaymentConsistencyTest extends IsolatedIntegrationTest {
         assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isZero();
 
         for (Long id : seatIds.subList(0, 2)) {
-            assertThat(seats.findById(id).orElseThrow().getStatus())
-                    .isEqualTo(SeatStatus.HOLD);
+            assertThat(seats.findById(id).orElseThrow().getStatus()).isEqualTo(SeatStatus.HOLD);
         }
+    }
+
+    private LocalDateTime seoulNow() {
+        return LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+    }
+
+    private void setConcertDates(LocalDateTime date) {
+        jdbc.update(
+                "UPDATE concert_schedule SET concert_date = ? WHERE concert_id = ?",
+                java.sql.Timestamp.valueOf(date),
+                concert.getId()
+        );
+    }
+
+    private void setOpeningTime(LocalDateTime date) {
+        jdbc.update(
+                "UPDATE concert SET ticketing_start_at = ? WHERE id = ?",
+                java.sql.Timestamp.valueOf(date),
+                concert.getId()
+        );
+    }
+
+    private org.springframework.test.web.servlet.ResultActions
+    enterQueue() throws Exception {
+        String token = jwtProvider.generateToken(
+                userA.getId(),
+                TokenType.IDENTITY
+        );
+
+        return mockMvc.perform(post("/api/v1/queue/entry")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        java.util.Map.of("concertId", concert.getId())
+                )));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions
+    reserveSeats(List<Long> selected) throws Exception {
+        String token = jwtProvider.generateToken(
+                userA.getId(),
+                TokenType.QUEUE
+        );
+
+        return mockMvc.perform(post("/api/v1/reservations")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        new ReservationRequest(concert.getId(), selected)
+                )));
+    }
+
+    private void assertNoWrites() {
+        assertThat(reservations.count()).isZero();
+        assertThat(payments.count()).isZero();
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(10000L);
+        assertThat(seats.findAll()).allMatch(seat -> seat.getStatus() == SeatStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("예매 오픈 시각 이전에는 대기열 진입 요청을 거부해야 한다")
+    void should_reject_queue_entry_before_opening_time() throws Exception {
+        // given: 예매 오픈 시각을 현재보다 1시간 이후로 설정
+        setOpeningTime(seoulNow().plusHours(1));
+
+        // when & then: 대기열 진입 API 호출 시 400(Q001) 응답 및 내부 진입 로직 미호출·데이터 무결성 검증
+        enterQueue()
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("Q001"));
+
+        verify(queue, never()).enterQueue(anyString(), anyString());
+        assertNoWrites();
+    }
+
+    @Test
+    @DisplayName("진행 예정인 미래 회차가 없는 콘서트는 대기열 진입 요청을 거부해야 한다")
+    void should_reject_queue_entry_when_no_future_schedule_exists() throws Exception {
+        // given: 모든 회차의 공연 일시를 과거(1시간 전)로 설정
+        setConcertDates(seoulNow().minusHours(1));
+
+        // when & then: 대기열 진입 API 호출 시 400(S005) 응답 및 데이터 변경 없음 검증
+        enterQueue()
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("S005"));
+
+        verify(queue, never()).enterQueue(anyString(), anyString());
+        assertNoWrites();
+    }
+
+    @Test
+    @DisplayName("과거 회차와 미래 회차가 혼재된 콘서트는 대기열 진입을 허용해야 한다")
+    void should_allow_queue_entry_when_both_past_and_future_schedules_exist() throws Exception {
+        // given: 기존 회차를 과거로 변경한 뒤 미래 회차를 추가로 생성하고 대기열 진입 결과 모킹
+        setConcertDates(seoulNow().minusHours(1));
+
+        schedules.save(ConcertSchedule.builder()
+                .concert(concert)
+                .concertDate(seoulNow().plusDays(1))
+                .totalSeats(1)
+                .build());
+
+        given(queue.enterQueue(anyString(), anyString())).willReturn(-1L);
+
+        // when & then: 대기열 진입 API 호출 시 200(ACTIVE) 응답 및 대기열 등록 검증
+        enterQueue()
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        verify(queue).enterQueue(
+                String.valueOf(concert.getId()),
+                String.valueOf(userA.getId())
+        );
+        assertNoWrites();
+    }
+
+    @Test
+    @DisplayName("예매 오픈 시각 이전에는 좌석 임시 점유 요청을 거부해야 한다")
+    void should_reject_reservation_before_opening_time() throws Exception {
+        // given: 예매 오픈 시각을 현재보다 1시간 이후로 설정
+        setOpeningTime(seoulNow().plusHours(1));
+
+        // when & then: 좌석 예약 API 호출 시 400(Q001) 응답 및 데이터 변경 없음 검증
+        reserveSeats(List.of(seatIds.getFirst()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("Q001"));
+
+        assertNoWrites();
+    }
+
+    @Test
+    @DisplayName("유효한 대기열 토큰을 보유하더라도 이미 시작된 과거 회차의 좌석 점유는 거부해야 한다")
+    void should_reject_reservation_for_past_schedule_even_with_queue_token() throws Exception {
+        // given: 대상 회차의 공연 일시를 과거(1시간 전)로 설정
+        setConcertDates(seoulNow().minusHours(1));
+
+        // when & then: QUEUE 토큰으로 좌석 예약 API 호출 시 400(S005) 응답 및 데이터 변경 없음 검증
+        reserveSeats(List.of(seatIds.getFirst()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("S005"));
+
+        assertNoWrites();
+    }
+
+    @Test
+    @DisplayName("과거와 미래 회차가 혼재된 콘서트에서 과거 회차 좌석은 거부하고 미래 회차 좌석은 점유를 허용해야 한다")
+    void should_reject_past_seat_and_allow_future_seat_in_mixed_concert() throws Exception {
+        // given: 기존 회차를 과거로 설정하고 미래 회차와 좌석을 추가로 생성
+        setConcertDates(seoulNow().minusHours(1));
+
+        ConcertSchedule futureSchedule = schedules.save(
+                ConcertSchedule.builder()
+                        .concert(concert)
+                        .concertDate(seoulNow().plusDays(1))
+                        .totalSeats(1)
+                        .build()
+        );
+
+        Seat futureSeat = seats.save(Seat.builder()
+                .schedule(futureSchedule)
+                .seatNo(1)
+                .price(1000L)
+                .status(SeatStatus.AVAILABLE)
+                .build());
+
+        // when & then: 과거 회차 좌석 예약 시도 시 400(S005) 응답 및 데이터 무결성 검증
+        reserveSeats(List.of(seatIds.getFirst()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("S005"));
+
+        assertNoWrites();
+
+        // when & then: 미래 회차 좌석 예약 시도 시 200 응답 및 좌석 HOLD 상태 전이 검증
+        reserveSeats(List.of(futureSeat.getId())).andExpect(status().isOk());
+
+        assertThat(reservations.count()).isEqualTo(1);
+        assertThat(seats.findById(futureSeat.getId()).orElseThrow().getStatus()).isEqualTo(SeatStatus.HOLD);
+    }
+
+    @Test
+    @DisplayName("임시 점유 이후 공연 시작 시각이 경과한 경우 결제 요청을 거부하고 기존 점유 상태를 유지해야 한다")
+    void should_reject_payment_after_concert_start_time() throws Exception {
+        // given: 미래 회차 상태에서 좌석을 임시 점유한 뒤 공연 시작 시각을 과거로 경과시킴
+        ReservationResponse reserved = reserve(userA, seatIds);
+        setConcertDates(seoulNow().minusHours(1));
+
+        // when & then: 결제 API 호출 시 400(S005) 응답, 잔액 미차감 및 예약·좌석 기존 상태 유지 검증
+        mockMvc.perform(post("/api/v1/payments")
+                        .header(
+                                "Authorization",
+                                "Bearer " + reserved.accessToken()
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                paymentRequest(reserved.groupId(), 4000L)
+                        )))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("S005"));
+
+        assertThat(payments.count()).isZero();
+        assertThat(users.findById(userA.getId()).orElseThrow().getBalance()).isEqualTo(10000L);
+        assertThat(reservations.findAll()).hasSize(4).allMatch(reservation -> reservation.getStatus() == ReservationStatus.PENDING);
+        assertThat(seats.findAll()).allMatch(seat -> seat.getStatus() == SeatStatus.HOLD);
     }
 }

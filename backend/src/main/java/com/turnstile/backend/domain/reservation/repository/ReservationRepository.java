@@ -16,11 +16,12 @@ import java.util.List;
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
     /**
-     * Seat과 Schedule을 한 번에 조회(Fetch Join)합니다.
+     * 결제 검증에 필요한 Seat, Schedule, Concert를 함께 조회합니다.
      */
     @Query("SELECT r FROM Reservation r " +
             "JOIN FETCH r.seat s " +
-            "JOIN FETCH s.schedule " +
+            "JOIN FETCH s.schedule sc " +
+            "JOIN FETCH sc.concert " +
             "WHERE r.groupId = :groupId")
     List<Reservation> findAllByGroupIdWithSeat(@Param("groupId") String groupId);
 

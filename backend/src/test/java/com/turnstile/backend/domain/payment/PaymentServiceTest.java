@@ -76,6 +76,7 @@ class PaymentServiceTest {
         given(mockSeat.getSchedule()).willReturn(mockSchedule);
 
         given(mockSchedule.getId()).willReturn(10L);
+        given(mockSchedule.isReservable(any(LocalDateTime.class))).willReturn(true);
 
         given(mockSchedule.getConcert()).willReturn(mockConcert);
         given(mockConcert.getId()).willReturn(100L);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { isAxiosError } from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { enterQueue, getQueueStatus } from "../apis/queue.api";
 import { useAuthStore } from "../store/useAuthStore";
@@ -84,7 +85,16 @@ export const QueueWaitingPage = () => {
         }, 3000);
       } catch (error) {
         console.error("[Queue] Enter | Error - 대기열 진입 실패", error);
-        toast.error("대기열 진입 중 오류가 발생했습니다. 다시 시도해주세요.");
+
+        const response = isAxiosError(error) ? error.response : undefined;
+        const code = response?.data?.code;
+
+        if (code === "Q001" || code === "S005") {
+          toast.error(response?.data?.message || "현재 예매할 수 없는 공연입니다.");
+        } else {
+          toast.error("대기열 진입 중 오류가 발생했습니다. 다시 시도해주세요.");
+        }
+
         navigate("/");
       }
     };

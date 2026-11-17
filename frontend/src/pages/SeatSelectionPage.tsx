@@ -142,6 +142,15 @@ export const SeatSelectionPage = () => {
       if (isAxiosError(error) && error.response) {
         const errorCode = error.response.data?.code;
 
+        if (errorCode === "Q001" || errorCode === "S005") {
+          toast.error(
+            error.response.data?.message || "현재 예매할 수 없는 공연 회차입니다.",
+          );
+          setSelectedSeatIds([]);
+          navigate("/", { replace: true });
+          return;
+        }
+
         // 타인에 의해 찰나의 순간 선점된 경우(CAS 실패 S004) 화면 최신화 및 재시도 유도
         if (errorCode === "S004") {
           toast.error("이미 선택되었거나 예매 중인 좌석이 포함되어 있습니다.\n좌석표를 다시 불러옵니다.", { duration: 3000 });

@@ -59,8 +59,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse reserveSeats(Long userId, ReservationRequest request) {
         // 동일 사용자의 동시 다발적인 중복 예약 생성을 직렬화하기 위해 사용자 행에 비관적 락 획득
-        User userRef = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
+        User userRef = userRepository.findByIdForUpdate(userId).orElseThrow(() -> new TurnstileException(ErrorCode.USER_NOT_FOUND));
 
         // 이미 해당 콘서트에 대해 결제 대기(PENDING) 중인 예약이 있는지 사전 검증 (Fail-fast)
         if (reservationRepository.existsByUserIdAndConcertIdAndStatus(userId, request.concertId(), ReservationStatus.PENDING)) {
@@ -81,8 +80,7 @@ public class ReservationService {
         }
 
         if (request.seatIds().size() > maxSeatsPerUser) {
-            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE,
-                    "최대 " + maxSeatsPerUser + "석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
+            throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "최대 " + maxSeatsPerUser + "석까지만 예매 가능합니다. (요청 좌석 수: " + request.seatIds().size() + ")");
         }
 
         // DB 데드락 방지 및 중복 요청으로 인한 자원 낭비를 막기 위해 좌석 ID 중복 제거 후 오름차순 정렬
@@ -94,8 +92,7 @@ public class ReservationService {
 
         // 비정상적인 좌석 ID 요청 시 DB 락 획득을 시도하기 전 최전방에서 차단(Fail-Fast)하여 부하 방지
         if (seats.size() != distinctSeatIds.size()) {
-            log.warn("[Reservation] Validate Seats | Fail (reason: seat not found, requestedCount: {}, foundCount: {})",
-                    distinctSeatIds.size(), seats.size());
+            log.warn("[Reservation] Validate Seats | Fail (reason: seat not found, requestedCount: {}, foundCount: {})", distinctSeatIds.size(), seats.size());
             throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "존재하지 않거나 유효하지 않은 좌석이 포함되어 있습니다.");
         }
 
@@ -103,8 +100,7 @@ public class ReservationService {
         for (Seat seat : seats) {
             Long actualConcertId = seat.getSchedule().getConcert().getId();
             if (!actualConcertId.equals(request.concertId())) {
-                log.warn("[Reservation] Validate Seats | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})",
-                        request.concertId(), actualConcertId);
+                log.warn("[Reservation] Validate Seats | Fail (reason: concert mismatch, requestedConcertId: {}, actualConcertId: {})", request.concertId(), actualConcertId);
                 throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "요청한 콘서트의 좌석이 아닙니다.");
             }
         }
@@ -116,18 +112,28 @@ public class ReservationService {
                 .count();
 
         if (uniqueScheduleCount > 1) {
-            log.warn("[Reservation] Validate Seats | Fail (reason: cross schedule booking, uniqueScheduleCount: {})",
-                    uniqueScheduleCount);
+            log.warn("[Reservation] Validate Seats | Fail (reason: cross schedule booking, uniqueScheduleCount: {})", uniqueScheduleCount);
             throw new TurnstileException(ErrorCode.INVALID_INPUT_VALUE, "서로 다른 회차의 좌석을 섞어서 예매할 수 없습니다.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        // 서울 표준시(Asia/Seoul) 기준 예매 오픈 여부 및 해당 회차의 예매 가능 상태 검증
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+
+        var schedule = seats.getFirst().getSchedule();
+
+        if (now.isBefore(schedule.getConcert().getTicketingStartAt())) {
+            throw new TurnstileException(ErrorCode.TICKETING_NOT_OPEN);
+        }
+
+        if (!schedule.isReservable(now)) {
+            throw new TurnstileException(ErrorCode.TICKETING_CLOSED);
+        }
+
         LocalDateTime expiresAt = now.plusSeconds(holdTimeSeconds);
 
         int updatedRowCount = seatRepository.holdSeatsConditionally(sortedSeatIds, userId, expiresAt);
         if (updatedRowCount != sortedSeatIds.size()) {
-            log.warn("[Reservation] Reserve Seats | Fail - CAS Mismatch (userId: {}, requested: {}, updated: {})",
-                    userId, sortedSeatIds.size(), updatedRowCount);
+            log.warn("[Reservation] Reserve Seats | Fail - CAS Mismatch (userId: {}, requested: {}, updated: {})", userId, sortedSeatIds.size(), updatedRowCount);
             throw new TurnstileException(ErrorCode.SEAT_ALREADY_HELD);
         }
 
@@ -157,12 +163,10 @@ public class ReservationService {
                 : configuredPaymentExpiry;
 
         Date paymentExpiryDate = Date.from(
-                paymentExpiresAt.atZone(ZoneId.systemDefault()).toInstant()
+                paymentExpiresAt.atZone(ZoneId.of("Asia/Seoul")).toInstant()
         );
 
-        String paymentToken =
-                jwtProvider.generatePaymentToken(userId, groupId, paymentExpiryDate);
-
+        String paymentToken = jwtProvider.generatePaymentToken(userId, groupId, paymentExpiryDate);
         log.info("[Reservation] Reserve Seats | Success (userId: {}, groupId: {}, seatCount: {})", userId, groupId, sortedSeatIds.size());
 
         return new ReservationResponse(

@@ -3,6 +3,7 @@ package com.turnstile.backend.domain.concert.repository;
 import com.turnstile.backend.domain.concert.entity.ConcertSchedule;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -11,4 +12,9 @@ import java.util.List;
 public interface ConcertScheduleRepository extends JpaRepository<ConcertSchedule, Long> {
 
     List<ConcertSchedule> findAllByConcert_Id(Long concertId);
+
+    boolean existsByConcert_IdAndConcertDateAfter(
+            Long concertId,
+            LocalDateTime now
+    );
 }
