@@ -60,7 +60,7 @@ class ConcertServiceTest {
 
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.get(cacheKey)).willReturn(null);
-        given(valueOperations.setIfAbsent(eq(lockKey), eq("locked"), any(Duration.class))).willReturn(true);
+        given(valueOperations.setIfAbsent(eq(lockKey), anyString(), any(Duration.class))).willReturn(true);
         given(concertScheduleRepository.findById(invalidScheduleId)).willReturn(Optional.empty());
 
         // when & then: 조회 시 예외 발생 확인

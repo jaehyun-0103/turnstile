@@ -2,9 +2,10 @@ package com.turnstile.backend.domain.reservation.scheduler;
 
 import com.turnstile.backend.domain.concert.repository.SeatRepository;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
-import com.turnstile.backend.global.common.CacheEvictor;
+import com.turnstile.backend.global.event.SeatCacheEvictEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +23,10 @@ public class SeatHoldScheduler {
 
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
-    private final CacheEvictor cacheEvictor;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * 점유 시간이 만료된 좌석과 예약 데이터를 정리하고, 변경된 스케줄의 좌석 캐시를 무효화합니다.
+     * 점유 시간이 만료된 좌석과 예약 데이터를 정리하고, 변경된 스케줄의 좌석 캐시 무효화 이벤트를 발행합니다.
      */
     @Transactional
     @Scheduled(fixedDelay = 60000) // 1분 주기 실행
@@ -45,11 +46,10 @@ public class SeatHoldScheduler {
         // 좌석 상태 롤백: HOLD -> AVAILABLE 및 점유자 정보 초기화
         int releasedSeatCount = seatRepository.releaseExpiredSeats(now);
 
-        // 변경된 스케줄 구역의 좌석표 캐시 즉시 무효화
+        // 트랜잭션 커밋 후 변경된 스케줄 구역의 좌석표 캐시가 무효화되도록 이벤트 발행
         for (Long scheduleId : affectedScheduleIds) {
-            cacheEvictor.evictSeatCache(scheduleId);
+            eventPublisher.publishEvent(new SeatCacheEvictEvent(scheduleId));
         }
-
-        log.info("[Reservation] Scheduler Cleanup | Executed (releasedSeats: {}, expiredReservations: {}, evictedCaches: {})", releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
+        log.info("[Reservation] Scheduler Cleanup | Executed (releasedSeats: {}, expiredReservations: {}, evictionEvents: {})", releasedSeatCount, expiredReservationCount, affectedScheduleIds.size());
     }
 }
