@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate, useBlocker } from "react-router-dom";
 import { getMyBalance } from "../apis/user.api";
 import { confirmPayment } from "../apis/payment.api";
+import { isAxiosError } from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 import toast from "react-hot-toast";
 
@@ -163,7 +164,19 @@ export const PaymentPage = () => {
     } catch (error) {
       isProcessDoneRef.current = true;
       clearCheckoutTokens();
-      navigate("/", { replace: true });
+
+      const response = isAxiosError(error) ? error.response : undefined;
+      const resultUnknown = !response || response.status >= 500 || response.status === 408 || response.data?.code === "P002";
+
+      if (resultUnknown) {
+        toast.error("결제 결과를 확인하지 못했습니다. 연결 상태를 확인한 뒤 마이페이지의 예매 내역을 확인해주세요.", { duration: 8000 });
+
+        navigate("/mypage", { replace: true });
+      } else {
+        toast.error(response.data?.message || "결제 요청이 거부되었습니다.", { duration: 5000 });
+
+        navigate("/", { replace: true });
+      }
     } finally {
       setIsPaying(false);
     }

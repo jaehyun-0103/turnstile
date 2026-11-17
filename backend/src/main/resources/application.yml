@@ -33,7 +33,8 @@ spring:
     redis:
       host: localhost
       port: 6380
-      timeout: 2000 # Redis 응답 대기 시간 2초로 제한
+      connect-timeout: 1s
+      timeout: 1s
 
 springdoc:
   swagger-ui:

@@ -1,8 +1,11 @@
 package com.turnstile.backend.global.event;
 
 import com.turnstile.backend.global.common.CacheEvictor;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -17,14 +20,33 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class SeatCacheEvictEventListener {
 
     private final CacheEvictor cacheEvictor;
+    private final MeterRegistry meterRegistry;
 
     /**
      * 트랜잭션이 성공적으로 커밋된 직후에만 캐시 무효화를 실행합니다.
+     * 후처리 실패가 이미 확정된 DB 트랜잭션에 전파되지 않도록 예외를 격리하고 메트릭을 기록합니다.
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleSeatCacheEvict(SeatCacheEvictEvent event) {
-        // 트랜잭션 롤백 시 캐시가 조기 삭제되어 발생하는 Race Condition을 방지하기 위해 지연 실행
-        log.info("[Global] Evict Seat Cache | Success (scheduleId: {})", event.scheduleId());
-        cacheEvictor.evictSeatCache(event.scheduleId());
+        Timer.Sample sample = Timer.start(meterRegistry);
+
+        try {
+            // 트랜잭션 롤백 시 캐시가 조기 삭제되어 발생하는 Race Condition을 방지하기 위해 지연 실행
+            cacheEvictor.evictSeatCache(event.scheduleId());
+
+            log.info("[Global] Evict Seat Cache | Success (scheduleId: {})", event.scheduleId());
+        } catch (DataAccessException e) {
+            meterRegistry.counter(
+                    "turnstile.post_commit.failures",
+                    "operation", "seat_cache_evict"
+            ).increment();
+
+            log.error("[Global] Evict Seat Cache | Fail - DB commit is unchanged (scheduleId: {})", event.scheduleId(), e);
+        } finally {
+            sample.stop(meterRegistry.timer(
+                    "turnstile.post_commit.duration",
+                    "operation", "seat_cache_evict"
+            ));
+        }
     }
 }
