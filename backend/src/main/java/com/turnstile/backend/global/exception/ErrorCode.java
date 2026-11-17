@@ -41,7 +41,8 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "P003", "결제 금액이 일치하지 않습니다."),
     CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "P004", "동시 요청으로 인해 처리에 실패했습니다."),
     FORBIDDEN_USER(HttpStatus.FORBIDDEN, "P005", "결제 권한이 없습니다."),
-    ALREADY_HAS_PENDING_RESERVATION(HttpStatus.BAD_REQUEST, "P006", "이미 결제 대기 중인 예약 건이 존재합니다.");
+    ALREADY_HAS_PENDING_RESERVATION(HttpStatus.BAD_REQUEST, "P006", "이미 결제 대기 중인 예약 건이 존재합니다."),
+    INVALID_SEAT_HOLD(HttpStatus.CONFLICT, "P007", "유효한 좌석 점유를 확인할 수 없습니다.");;
 
     private final HttpStatus status;
     private final String code;

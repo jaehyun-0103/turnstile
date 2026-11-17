@@ -9,6 +9,8 @@ import com.turnstile.backend.domain.reservation.dto.ReservationRequest;
 import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
 import com.turnstile.backend.domain.reservation.service.ReservationService;
+import com.turnstile.backend.domain.user.entity.User;
+import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.exception.ErrorCode;
 import com.turnstile.backend.global.exception.TurnstileException;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,11 +41,14 @@ class ReservationServiceTest {
 
     @Mock private ReservationRepository reservationRepository;
     @Mock private QueueRedisRepository queueRedisRepository;
+    @Mock private UserRepository userRepository;
     @Mock private SeatRepository seatRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(User.builder().id(1L).build()));
+
         // @Value로 분리된 비즈니스 정책 주입
         ReflectionTestUtils.setField(reservationService, "maxSeatsPerUser", 4);
         ReflectionTestUtils.setField(reservationService, "holdTimeSeconds", 300L);
