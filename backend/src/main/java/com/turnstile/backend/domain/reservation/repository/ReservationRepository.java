@@ -26,10 +26,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findAllByGroupIdWithSeat(@Param("groupId") String groupId);
 
     /**
-     * 스케줄러 전용: 점유 시간이 지나 만료된 좌석을 참조하고 있는 PENDING 상태의 예약을 EXPIRED로 일괄 처리합니다.
+     * 스케줄러 전용: 점유 시간이 지나 만료된 좌석을 참조하고 있는 PENDING 상태의 예약을 EXPIRED로 일괄 처리하고 수정 시각을 갱신합니다.
      */
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Reservation r SET r.status = 'EXPIRED' " +
+    @Query("UPDATE Reservation r " +
+            "SET r.status = 'EXPIRED', r.updatedAt = :now " +
             "WHERE r.status = 'PENDING' AND r.seat.id IN " +
             "(SELECT s.id FROM Seat s WHERE s.status = 'HOLD' AND s.holdExpiresAt < :now)")
     int expirePendingReservations(@Param("now") LocalDateTime now);

@@ -50,4 +50,60 @@ class ReservationCleanupSchedulerTest extends DatabaseIntegrationTest {
         // then: 2시간 전 EXPIRED 데이터 및 PENDING, PAID 상태 데이터는 보존되었는지 검증
         assertThat(reservations.findAll()).extracting(Reservation::getId).containsExactlyInAnyOrder(recent.getId(), pending.getId(), paid.getId());
     }
+
+    @Test
+    @DisplayName("PENDING 예약이 EXPIRED로 전환된 시점을 기준으로 정확히 24시간 동안 보존된 후 삭제되어야 한다")
+    void retainsReservationFor24HoursAfterExpiration() {
+        // given: 만료 기준 시각 고정 및 수정 시각이 오래된 PENDING 예약·만료 대상 HOLD 좌석 세팅
+        LocalDateTime expiredAt = LocalDateTime.of(2026, 11, 12, 12, 0);
+
+        var reservation = createReservation(
+                ReservationStatus.PENDING,
+                0,
+                expiredAt.minusHours(25)
+        );
+        Long reservationId = reservation.getId();
+
+        jdbc.update("""
+            UPDATE seat
+            SET status = 'HOLD',
+                hold_user_id = ?,
+                hold_expires_at = ?
+            WHERE id = ?
+            """,
+                userA.getId(),
+                Timestamp.valueOf(expiredAt.minusMinutes(1)),
+                seatIds.getFirst()
+        );
+
+        var tx = new TransactionTemplate(transactionManager);
+
+        // when: 만료 처리 쿼리 실행
+        Integer expiredCount = tx.execute(status -> reservations.expirePendingReservations(expiredAt));
+
+        // then: 상태가 EXPIRED로 전환되고 updatedAt이 만료 시각으로 갱신되었는지 검증
+        assertThat(expiredCount).isEqualTo(1);
+
+        var expired = reservations.findById(reservationId).orElseThrow();
+        assertThat(expired.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
+        assertThat(expired.getUpdatedAt()).isEqualTo(expiredAt);
+
+        // then: 만료 직후에는 삭제되지 않고 보존되었는지 검증
+        Integer deletedImmediately = tx.execute(status -> reservations.deleteExpiredReservationsOlderThan(expiredAt.minusHours(24)));
+
+        assertThat(deletedImmediately).isZero();
+        assertThat(reservations.existsById(reservationId)).isTrue();
+
+        // then: 만료 후 24시간 경계 직전(1마이크로초 전)까지 보존되었는지 검증
+        Integer deletedBeforeBoundary = tx.execute(status -> reservations.deleteExpiredReservationsOlderThan(expiredAt.minusNanos(1_000)));
+
+        assertThat(deletedBeforeBoundary).isZero();
+        assertThat(reservations.existsById(reservationId)).isTrue();
+
+        // then: 만료 후 정확히 24시간 경과 시 삭제되었는지 검증
+        Integer deletedAtBoundary = tx.execute(status -> reservations.deleteExpiredReservationsOlderThan(expiredAt));
+
+        assertThat(deletedAtBoundary).isEqualTo(1);
+        assertThat(reservations.existsById(reservationId)).isFalse();
+    }
 }
