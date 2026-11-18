@@ -19,6 +19,7 @@ import com.turnstile.backend.domain.user.repository.UserRepository;
 import com.turnstile.backend.global.common.SeatCacheKeys;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -35,6 +36,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.UUID;
 
 /**
@@ -43,6 +45,12 @@ import java.util.UUID;
 @SpringBootTest
 @AutoConfigureMockMvc
 public abstract class DatabaseIntegrationTest extends IsolatedIntegrationTest {
+    // JVM 전체의 기본 타임존을 한국 시간으로 고정
+    @BeforeAll
+    static void initTimeZone() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+    }
+
     @Autowired protected ReservationService reservationService;
     @Autowired protected PaymentService paymentService;
     @Autowired protected UserRepository users;
