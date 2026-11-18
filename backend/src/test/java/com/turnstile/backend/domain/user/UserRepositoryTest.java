@@ -2,21 +2,17 @@ package com.turnstile.backend.domain.user;
 
 import com.turnstile.backend.domain.user.entity.User;
 import com.turnstile.backend.domain.user.repository.UserRepository;
-import com.turnstile.backend.global.config.JpaConfig;
+import com.turnstile.backend.support.RepositoryIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 유저 엔티티의 JPA 영속성 및 Auditing 동작을 검증하는 데이터 계층 테스트입니다.
  */
-@DataJpaTest
-@Import(JpaConfig.class)
-class UserRepositoryTest {
+class UserRepositoryTest extends RepositoryIntegrationTest {
 
     @Autowired private UserRepository userRepository;
 

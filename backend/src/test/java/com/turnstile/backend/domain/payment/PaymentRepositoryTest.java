@@ -3,12 +3,10 @@ package com.turnstile.backend.domain.payment;
 import com.turnstile.backend.domain.payment.entity.Payment;
 import com.turnstile.backend.domain.payment.entity.PaymentStatus;
 import com.turnstile.backend.domain.payment.repository.PaymentRepository;
-import com.turnstile.backend.global.config.JpaConfig;
+import com.turnstile.backend.support.RepositoryIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
 
 import java.time.LocalDateTime;
 
@@ -17,9 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 결제 이력 엔티티의 JPA 영속성 저장을 검증하는 데이터 계층 테스트입니다.
  */
-@DataJpaTest
-@Import(JpaConfig.class) // Auditing 설정을 위해 JpaConfig 임포트
-class PaymentRepositoryTest {
+class PaymentRepositoryTest extends RepositoryIntegrationTest {
 
     @Autowired private PaymentRepository paymentRepository;
 
