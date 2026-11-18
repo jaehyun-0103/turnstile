@@ -1,60 +1,53 @@
 package com.turnstile.backend.domain.reservation;
 
 import com.turnstile.backend.domain.reservation.entity.Reservation;
-import com.turnstile.backend.domain.reservation.repository.ReservationRepository;
+import com.turnstile.backend.domain.reservation.entity.ReservationStatus;
 import com.turnstile.backend.domain.reservation.scheduler.ReservationCleanupScheduler;
-import org.junit.jupiter.api.AfterEach;
+import com.turnstile.backend.support.DatabaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-class ReservationCleanupSchedulerTest {
+/**
+ * 만료 후 일정 시간이 지난 예약 데이터를 정리하는 스케줄러의 동작을 검증하는 통합 테스트입니다.
+ */
+class ReservationCleanupSchedulerTest extends DatabaseIntegrationTest {
 
-    @Autowired private ReservationCleanupScheduler cleanupScheduler;
-    @Autowired private ReservationRepository reservationRepository;
-    @Autowired private JdbcTemplate jdbcTemplate;
-
-    @AfterEach
-    void tearDown() {
-        // 다른 테스트에 영향을 주지 않도록 테스트용 예약 그룹 데이터만 삭제
-        jdbcTemplate.update("DELETE FROM reservation WHERE group_id IN ('cleanup-old', 'cleanup-recent')");
+    /**
+     * 지정된 예약 상태와 수정 시각(updated_at)을 가진 테스트용 예약 데이터를 생성합니다.
+     */
+    private Reservation createReservation(ReservationStatus status, int seatIndex, LocalDateTime updatedAt) {
+        var reservation = reservations.save(Reservation.builder()
+                .groupId(UUID.randomUUID().toString()).user(userA)
+                .seat(seats.findById(seatIds.get(seatIndex)).orElseThrow())
+                .status(status).price(1000L).reservedAt(updatedAt).build());
+        jdbc.update("UPDATE reservation SET updated_at = ? WHERE id = ?", Timestamp.valueOf(updatedAt), reservation.getId());
+        return reservation;
     }
 
     @Test
-    @DisplayName("스케줄러 동작 시 EXPIRED 상태가 된 지 24시간이 지난 데이터만 삭제되고 최근 데이터는 보존되어야 한다")
-    void should_delete_only_expired_reservations_older_than_24_hours() {
-        // given: 1번 유저, 30번/31번 좌석을 타겟으로 세팅
-        Long userId = 1L;
-        Long seatId1 = 30L;
-        Long seatId2 = 31L;
-
-        // 삭제 대상: 25시간 전에 EXPIRED 된 데이터
-        LocalDateTime oldTime = LocalDateTime.now().minusHours(25);
-        jdbcTemplate.update("INSERT INTO reservation (group_id, user_id, seat_id, price, status, reserved_at, created_at, updated_at) " +
-                "VALUES ('cleanup-old', ?, ?, 150000, 'EXPIRED', ?, ?, ?)", userId, seatId1, oldTime, oldTime, oldTime);
-
-        // 보존 대상: 2시간 전에 EXPIRED 된 데이터
-        LocalDateTime recentTime = LocalDateTime.now().minusHours(2);
-        jdbcTemplate.update("INSERT INTO reservation (group_id, user_id, seat_id, price, status, reserved_at, created_at, updated_at) " +
-                "VALUES ('cleanup-recent', ?, ?, 150000, 'EXPIRED', ?, ?, ?)", userId, seatId2, recentTime, recentTime, recentTime);
+    @DisplayName("스케줄러 동작 시 EXPIRED 상태가 된 지 24시간이 지난 데이터만 삭제되고 최근 데이터 및 다른 상태의 데이터는 보존되어야 한다")
+    void deletesOnlyExpiredRowsWithOldRecordedUpdatedAt() {
+        // given: 삭제 대상(25시간 전 EXPIRED) 및 보존 대상(2시간 전 EXPIRED, 25시간 전 PENDING/PAID) 데이터 세팅
+        var old = createReservation(ReservationStatus.EXPIRED, 0, now().minusHours(25)); // 삭제 대상: 25시간 전 EXPIRED
+        var recent = createReservation(ReservationStatus.EXPIRED, 1, now().minusHours(2)); // 보존 대상: 2시간 전 EXPIRED
+        var pending = createReservation(ReservationStatus.PENDING, 2, now().minusHours(25)); // 보존 대상: 25시간 전 PENDING
+        var paid = createReservation(ReservationStatus.PAID, 3, now().minusHours(25)); // 보존 대상: 25시간 전 PAID
 
         // when: 스케줄러 강제 실행
-        cleanupScheduler.cleanupOldExpiredReservations();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                new ReservationCleanupScheduler(reservations).cleanupOldExpiredReservations());
 
-        // then: 25시간 전 데이터는 삭제되었는지 검증
-        List<Reservation> oldReservations = reservationRepository.findAllByGroupIdWithSeat("cleanup-old");
-        assertThat(oldReservations).isEmpty();
+        // then: 25시간 전 EXPIRED 데이터는 삭제되었는지 검증
+        assertThat(reservations.findById(old.getId())).isEmpty();
 
-        // then: 2시간 전 데이터는 지워지지 않고 보존되었는지 검증
-        List<Reservation> recentReservations = reservationRepository.findAllByGroupIdWithSeat("cleanup-recent");
-        assertThat(recentReservations).hasSize(1);
+        // then: 2시간 전 EXPIRED 데이터 및 PENDING, PAID 상태 데이터는 보존되었는지 검증
+        assertThat(reservations.findAll()).extracting(Reservation::getId).containsExactlyInAnyOrder(recent.getId(), pending.getId(), paid.getId());
     }
 }

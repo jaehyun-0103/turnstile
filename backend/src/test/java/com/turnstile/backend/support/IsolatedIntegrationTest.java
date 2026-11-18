@@ -2,10 +2,13 @@ package com.turnstile.backend.support;
 
 import com.turnstile.backend.global.init.DummyDataInitializer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -21,6 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Testcontainers 기반의 격리된 MySQL 및 Redis 인프라 환경을 제공하는 통합 테스트 추상 클래스입니다.
  */
 @ActiveProfiles("test")
+@Tag("integration")
+@Timeout(90)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class IsolatedIntegrationTest {
 
     private static final MySQLContainer MYSQL =
@@ -71,10 +77,7 @@ public abstract class IsolatedIntegrationTest {
         registry.add("spring.datasource.password", MYSQL::getPassword);
 
         registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add(
-                "spring.data.redis.port",
-                () -> REDIS.getMappedPort(6379)
-        );
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
 
     @BeforeEach

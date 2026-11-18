@@ -4,6 +4,7 @@ import com.turnstile.backend.domain.auth.enums.TokenType;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.concert.entity.Concert;
 import com.turnstile.backend.domain.concert.repository.ConcertRepository;
+import com.turnstile.backend.domain.concert.repository.ConcertScheduleRepository;
 import com.turnstile.backend.domain.queue.dto.QueueEntryRequest;
 import com.turnstile.backend.domain.queue.dto.QueueEntryResponse;
 import com.turnstile.backend.domain.queue.dto.QueueStatusResponse;
@@ -18,12 +19,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -36,6 +40,7 @@ class QueueServiceTest {
 
     @Mock private QueueRedisRepository queueRedisRepository;
     @Mock private ConcertRepository concertRepository;
+    @Mock private ConcertScheduleRepository concertScheduleRepository;
     @Mock private JwtProvider jwtProvider;
 
     @Test
@@ -62,12 +67,11 @@ class QueueServiceTest {
         // given: 활성 유저의 고정된 타임스탬프(Score)와 기대 토큰 세팅
         Long concertId = 100L;
         Long userId = 1L;
-        Double fixedScore = 1700000000.0;
+        Double fixedScore = (double) (Instant.now().getEpochSecond() + 120);
         String expectedToken = "consistent-token";
         Date expectedDate = new Date(fixedScore.longValue() * 1000);
 
-        given(queueRedisRepository.getActiveUserScore(String.valueOf(concertId), String.valueOf(userId)))
-                .willReturn(fixedScore);
+        given(queueRedisRepository.getActiveUserScore(String.valueOf(concertId), String.valueOf(userId))).willReturn(fixedScore);
         given(jwtProvider.generateToken(userId, TokenType.QUEUE, expectedDate)).willReturn(expectedToken);
 
         // when: 두 번 연속 폴링 상태 조회
@@ -94,6 +98,8 @@ class QueueServiceTest {
                 .build();
 
         given(concertRepository.findById(concertId)).willReturn(Optional.of(openedConcert));
+
+        given(concertScheduleRepository.existsByConcert_IdAndConcertDateAfter(eq(concertId), any(LocalDateTime.class))).willReturn(true);
 
         // Lua 스크립트가 이미 ACTIVE 큐에 존재하는 유저임을 감지하고 -1을 반환
         given(queueRedisRepository.enterQueue(String.valueOf(concertId), String.valueOf(userId)))
