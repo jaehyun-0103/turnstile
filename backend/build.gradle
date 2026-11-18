@@ -51,7 +51,7 @@ dependencies {
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 }
 
-tasks.named('test', Test) {
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
 
     jvmArgs += "-XX:+EnableDynamicAgentLoading"
@@ -61,26 +61,24 @@ tasks.named('test', Test) {
 
     maxParallelForks = 1
 
-    // 격리 및 회귀 검증이 완료된 테스트만 기본 실행 대상으로 관리함.
-    // 기존 로컬 데이터 의존 테스트는 전환 전까지 포함하지 않음.
-    include '**/JwtProviderUnitTest.class'
-    include '**/CacheEvictorUnitTest.class'
-    include '**/GlobalExceptionHandlerTest.class'
-    include '**/ClientInputValidationTest.class'
-    include '**/QueueExpiryIntegrationTest.class'
-    include '**/ConcertServiceTest.class'
-    include '**/ConcertScheduleTimeTest.class'
-    include '**/ConcertCacheIntegrationTest.class'
-    include '**/ReservationServiceTest.class'
-    include '**/ReservationPaymentConsistencyTest.class'
-    include '**/PaymentServiceTest.class'
-    include '**/PaymentControllerTest.class'
-    include '**/UserControllerTest.class'
-    include '**/UserServiceTest.class'
-    include '**/UserBalanceConsistencyTest.class'
-
     testLogging {
         events 'failed', 'skipped'
         exceptionFormat 'full'
     }
+}
+
+tasks.register('unitTest', Test) {
+    description = 'Runs unit and MVC tests without Docker.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { excludeTags 'integration' }
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs all real-infrastructure tests using Testcontainers.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'integration' }
 }

@@ -6,8 +6,6 @@ import com.turnstile.backend.domain.auth.dto.LoginRequest;
 import com.turnstile.backend.domain.auth.dto.LoginResponse;
 import com.turnstile.backend.domain.auth.provider.JwtProvider;
 import com.turnstile.backend.domain.auth.service.AuthService;
-import com.turnstile.backend.global.exception.GlobalExceptionHandler;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +13,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -29,19 +26,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
 
-    private MockMvc mockMvc;
-
+    @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private AuthService authService;
     @MockitoBean private JwtProvider jwtProvider;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(authService))
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
-    }
 
     @Test
     @DisplayName("로그인 요청 시 입력받은 정보와 생성된 식별자를 JSON으로 반환한다")
